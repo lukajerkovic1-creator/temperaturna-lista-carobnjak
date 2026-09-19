@@ -5647,6 +5647,35 @@ body{background:radial-gradient(ellipse at 12% 0%,#dceaf4,transparent 55%),#edf2
 #wizardFontDialog .wizard-font-control{font-size:17px}#wizardFontDialog .wizard-font-control select{width:180px}
 @media(max-width:550px){#wizardFontDialog{padding:16px}.wizard-font-bulk{align-items:stretch;flex-direction:column;gap:8px}#wizardFontDialog .wizard-font-bulk select{width:100%}.wizard-font-category .wizard-font-control{display:flex;flex-direction:column;align-items:stretch}}
 </style>
+
+<style id="wizard-review-fixes">
+#sharedTherapyGear{display:none!important}
+#wizardOptionsBody{box-sizing:border-box;overflow-x:hidden;width:min(380px,calc(100vw - 32px))}
+#wizardOptionsBody *{box-sizing:border-box;min-width:0;max-width:100%}
+#wizardOptionsBody #previewPageControls{display:grid;grid-template-columns:44px minmax(0,1fr) minmax(0,1fr) 44px;width:100%;gap:4px}
+#wizardOptionsBody #previewPageControls button{min-height:48px;white-space:normal;padding:6px;font-size:17px}
+.wizard-action-dialog{width:min(540px,calc(100vw - 32px));box-sizing:border-box;border:1px solid #b7cdd6;border-radius:16px;padding:24px;color:#203b4a;max-height:90dvh;overflow:auto}
+.wizard-action-dialog::backdrop{background:#17334c88}
+.wizard-dialog-actions{display:grid;gap:12px}.wizard-dialog-actions button{min-height:48px;font-size:18px;padding:12px}
+#wizardPrintIssues{flex:none;padding:12px;background:#fff1df;border:2px solid #9b4b0b;border-radius:8px;max-height:30vh;overflow:auto}
+#wizardPrintIssues[hidden]{display:none!important}.wizard-review-issue{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px}.wizard-review-issue button{min-height:44px}
+.wizard-print-preview #wizardStep9 #wizardSaveStatus{display:block!important;flex:none;margin:0;font-size:16px;line-height:1.4}
+#wizardReadableSummary{flex:none;background:white;border:1px solid #c8d9e2;border-radius:8px;padding:12px}
+#wizardReadableSummary summary{font-size:18px;font-weight:600;cursor:pointer;min-height:32px}
+#wizardReadableSummary>div{max-height:35vh;overflow:auto;font-size:19px;line-height:1.5}
+#wizardReadableSummary pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;margin:8px 0}
+#wizardReadableSummary h3{font-size:20px;margin:16px 0 4px}.wizard-review-note{font-weight:600}
+#wizardPreviewZoom{min-height:44px;font-size:17px;max-width:100%;padding:8px;border:1px solid #b8cbd7;border-radius:8px;background:white;color:#203b4a}
+#wizardCard .wizard-preview-stage{overflow:auto;align-items:flex-start}
+#wizardCard .wizard-preview-stage.is-zoomed{display:block}
+#wizardCard .wizard-preview-stage.is-zoomed canvas{width:var(--review-width)!important;height:auto!important;max-width:none!important;max-height:none!important;object-fit:initial}
+#wizardCard .wizard-print-actions{flex-direction:row;flex-wrap:wrap;margin-left:0;gap:8px}
+#wizardCard .wizard-print-actions button{flex:1 1 auto}
+.wizard-print-preview #wizardStep9{overflow-y:auto!important}
+.wizard-print-preview #wizardStep9 .wizard-preview-stage{flex:1 0 280px}
+@media(max-width:650px){#wizardCard .wizard-header{gap:8px}#wizardCard .wizard-header h1{font-size:22px}#wizardOptions>summary{font-size:18px}#wizardCard .wizard-preview-controls{justify-content:flex-start}#wizardCard .wizard-print-actions{width:100%;display:grid;grid-template-columns:1fr}#wizardPreviewZoom{width:100%}#wizardCard .wizard-preview-stage canvas{height:auto;align-self:flex-start}#wizardPrintIssues{max-height:none}}
+@media print{#wizardPrintIssues,#wizardSaveStatus,#wizardReadableSummary,.wizard-action-dialog{display:none!important}}
+</style>
 </head>
 <body>
 <div class="app" id="appRoot" style="visibility:hidden" aria-busy="true" inert>
@@ -9768,6 +9797,65 @@ Primjer 3..."></textarea>
     "cGluO1p5cHJleGEgVmVsb3RhYjtOMDVBSDAzIDE2NDt0YmwuIHJhc3AuIHphIHVzdGEgMjh4MTAgbWc7O087b3JhbG5vO3Auby58cGVyIG9zfHBvfG9yYWxub3xuYSB1c3RhO29zbm92bmE7MTUuMDYuMjAyNjtsaWpla19pbGlfcHJpcHJhdmFrDQowODUyZjUwMTZmNTg3MDBlO3R2b3JuaWNraTtaeXByZXhhIFZlbG90YWI7enlwcmV4YSB2ZWxvdGFiO29sYW56YXBpbjtaeXByZXhhIFZlbG90YWI7TjA1QUgwMyAxNjM7dGJsLiByYXNwLiB6YSB1c3RhIDI4eDUgbWc7O087b3JhbG5vO3Auby58cGVyIG9zfHBvfG9yYWxub3xuYSB1c3RhO29zbm92bmE7MTUuMDYuMjAyNjtsaWpla19pbGlfcHJpcHJhdmFrDQo2M2Q5Y2M1MTFlNGFjYTg3O3R2b3JuaWNraTtaeXRpZ2E7enl0aWdhO2FiaXJhdGVyb247Wnl0aWdhO0wwMkJYMDMgMTYyO3RibC4gZmlsbSBvYmwuIDYweDUwMCBtZzs7TztvcmFsbm87cC5vLnxwZXIgb3N8cG98b3JhbG5vfG5hIHVzdGE7b3Nub3ZuYTsxNS4wNi4yMDI2O2xpamVrX2lsaV9wcmlwcmF2YWsNCjc3MmMxMDU3MzExOGEzMjk7dHZvcm5pY2tpO1p5dm94aWQ7enl2b3hpZDtsaW5lem9saWQ7Wnl2b3hpZDtKMDFYWDA4IDA2MTtvdG9wLiB6YSBpbmYuLCB2cmXEhy4gcGxhc3QuIDEweDYwMCBtZy8zMDAgbWw7MzAwIG1sO1A7cGFyZW50ZXJhbG5vO2kudi58aXZ8aW50cmF2ZW5vem5vfGludHJhdmVuc2tpfGkubS58aW18aW50cmFtdXNrdWxhcm5vfHMuYy58c2N8c3Vwa3V0YW5vfHBhcmVudGVyYWxub3xp",
     "bmZ1emlqYXxpbmouO29zbm92bmE7MTUuMDYuMjAyNjtsaWpla19pbGlfcHJpcHJhdmFrDQo4ZDU2YTNkNTA1ZDAyMDk1O3R2b3JuaWNraTtaeXZveGlkO3p5dm94aWQ7bGluZXpvbGlkO1p5dm94aWQ7SjAxWFgwOCAxNjE7dGJsLiBmaWxtIG9ibC4gMTB4NjAwIG1nOztPO29yYWxubztwLm8ufHBlciBvc3xwb3xvcmFsbm98bmEgdXN0YTtvc25vdm5hOzE1LjA2LjIwMjY7bGlqZWtfaWxpX3ByaXByYXZhaw0K"
   ];
+  // v0.9.1: explicit recovery, complete review and independent preview zoom.
+  function wizardPrintIssues() {
+    const issues=[];
+    const add=(id,step,message)=>issues.push({id,step,message});
+    for(const [id,label] of [['firstName','ime'],['lastName','prezime']])
+      if(!document.getElementById(id).value.trim())add(id,1,'Unesite '+label+' pacijenta.');
+    if(!/^(18|19|20)\d{2}$/.test(els.birthYear.value.trim()))add('birthYear',1,'Unesite četveroznamenkasto godište.');
+    if(!parseCroatianDateToIso(els.admissionDate.value))add('admissionDate',1,'Datum prijema nije valjan. Unesite dd.mm.gggg.');
+    if(els.showFollowUpControlOnList.checked && !parseCroatianDateToIso(els.followUpControlDate.value))
+      add('followUpControlDate',6,'Unesite valjan datum kontrole ili odaberite da kontrola nije potrebna.');
+    if(wizard.microbiologyEnabled)wizard.microbiologyResults.forEach((row,index)=>{
+      if(row.date && !parseCroatianDateToIso(row.date))add('micro-'+index+'-date',6,'Datum mikrobiološkog nalaza '+(index+1)+' nije valjan.');
+    });
+    return issues;
+  }
+  function initWizardReviewFixes() {
+    const warnings=wizardElement('div',{id:'wizardPrintIssues',role:'status',tabindex:'-1'});
+    const summary=wizardElement('details',{id:'wizardReadableSummary'});
+    summary.append(wizardElement('summary',{},'Čitljiv pregled podataka prije ispisa'));
+    const content=wizardElement('div');summary.append(content);
+    const save=wizardElement('button',{type:'button',id:'wizardSavePatient'},'Spremi pacijenta na računalo');
+    const saveStatus=wizardElement('p',{id:'wizardSaveStatus',role:'status','aria-live':'polite'});
+    printActions.prepend(save);previewControls.after(warnings,saveStatus,summary);
+    function syncSave(){save.disabled=Boolean(state.patientSyncState.saveInFlight);save.textContent=save.disabled?'Pripremam datoteku…':'Spremi pacijenta na računalo';saveStatus.textContent=getPatientSyncStatusMessage();}
+    save.onclick=async()=>{const result=await savePatientData();syncSave();if(!result)saveStatus.textContent='Spremanje nije pokrenuto. Provjerite ime i prezime; uneseni podaci su sačuvani.';};
+    if(els.patientSyncStatus)new MutationObserver(syncSave).observe(els.patientSyncStatus,{childList:true,subtree:true,characterData:true});
+    function review(){
+      const issues=wizardPrintIssues();warnings.replaceChildren();warnings.hidden=!issues.length;
+      if(issues.length){warnings.append(wizardElement('strong',{},'Prije ispisa ispravite:'));
+        issues.forEach(issue=>{const row=wizardElement('div',{class:'wizard-review-issue'});const fix=wizardElement('button',{type:'button',class:'secondary'},issue.id==='admissionDate'?'Ispravi datum':'Ispravi');fix.onclick=()=>{wizardGo(issue.step);const field=document.getElementById(issue.id);field?.focus();field?.scrollIntoView({block:'center'});};row.append(wizardElement('span',{},issue.message),fix);warnings.append(row);});}
+      print.disabled=printWithoutBackground.disabled=issues.length>0;
+      content.replaceChildren();const data=getFormData();
+      content.append(wizardElement('h3',{},'Pacijent'),wizardElement('p',{},[data.fullName,data.birthYear,'Prijem: '+(data.admissionDate?formatIsoDateToCroatian(data.admissionDate):'nije valjan')].join(' · ')));
+      wizardSections(data).forEach(([title,text])=>content.append(wizardElement('h3',{},title),wizardElement('pre',{},text)));
+      if(data.showFollowUpControlOnList && (data.followUpControl || data.followUpControlDate))content.append(wizardElement('p',{class:'wizard-review-note'},'Kontrola je uključena u nastavne stranice nakon temperaturne liste.'));
+      syncSave();
+    }
+    let zoom=0;
+    const zoomSelect=wizardElement('select',{'aria-label':'Povećanje pregleda',id:'wizardPreviewZoom'});
+    [[0,'Cijela stranica'],[100,'Povećaj pregled: 100%'],[150,'Povećaj pregled: 150%'],[200,'Povećaj pregled: 200%']].forEach(([value,label])=>zoomSelect.append(wizardElement('option',{value:String(value)},label)));
+    previewControls.insertBefore(zoomSelect,printActions);
+    function applyZoom(){const canvas=previewStage.querySelector('canvas');if(!canvas)return;previewStage.classList.toggle('is-zoomed',zoom>0);canvas.style.setProperty('--review-width',(1123*zoom/100)+'px');}
+    zoomSelect.onchange=()=>{zoom=Number(zoomSelect.value);applyZoom();previewStage.scrollTop=previewStage.scrollLeft=0;};
+    const previousRefresh=refreshScreenPreview;refreshScreenPreview=function(){previousRefresh();applyZoom();};
+    const previousGo=wizardGo;wizardGo=function(step){previousGo(step);if(wizard.step===7)review();updateSourceActions();};
+    const source=document.getElementById('wizardSource');
+    function updateSourceActions(){if(wizard.step===0)document.getElementById('wizardNext').textContent=source.value.trim()?'Obradi nalaz i nastavi':'Ručni unos';}
+    source.addEventListener('input',updateSourceActions);
+    document.getElementById('wizardStep0').querySelector('button').textContent='Nastavi bez obrade';
+    document.getElementById('wizardStep0').querySelector('button').title='Zadržava postojeće podatke bez automatskog raspoređivanja teksta nalaza.';
+    const originalNext=wizardNext;
+    document.getElementById('wizardNext').removeEventListener('click',originalNext);
+    document.getElementById('wizardNext').addEventListener('click',()=>{
+      if(wizard.step===1 && !parseCroatianDateToIso(els.admissionDate.value)){wizardValidate();els.admissionDate.focus();return;}
+      originalNext();
+    });
+    syncSave();
+  }
+
 })();
 
 </script>
@@ -9782,7 +9870,7 @@ Primjer 3..."></textarea>
   // ============================================================
   // VERZIJA APLIKACIJE — jedini izvor istine
   // ============================================================
-  const APP_VERSION = '0.9.0';
+  const APP_VERSION = '0.9.1';
   const APP_BUILD_SHA = '28c562f650d3';
   const PARSER_VERSION = 'temperaturna-lista-parser-v2';
   const PARSER_PROVENANCE_SCHEMA = 'temperaturna-lista-parser-provenance-v1';
@@ -18243,51 +18331,36 @@ const THERAPY_REQUIRED_PATTERNS = Object.freeze({
   }
 
   async function startNewPatientEntry() {
-    const currentData = getFormData();
-    const hasPatientData = isPatientDataDifferentFromEmpty(currentData);
-    if (!hasPatientData) {
-      clearForm({
-        statusMessage: 'Novi unos je spreman.',
-        draftStatusMessage: 'Lokalni draft obrisan za novi unos.',
-        focusFirstField: true
-      });
-      return;
+    if (isPatientDataDifferentFromEmpty(getFormData())) {
+      const choice = await requestNewPatientChoice();
+      if (choice !== 'discard' && choice !== 'saved') return;
     }
+    clearForm({statusMessage:'Novi unos je spreman.', draftStatusMessage:'Novi unos je spreman.', focusFirstField:false});
+    wizardGo(0);
+    document.getElementById('wizardSource').focus();
+  }
 
-    if (!hasPatientFullName(currentData)) {
-      const continueWithoutSave = window.confirm(getUnnamedPatientNewEntryMessage());
-      if (!continueWithoutSave) {
-        setStatus('Novi unos je odgođen; pacijent nema ime i nije spremljen.');
-        if (els.fullName) window.setTimeout(() => els.fullName.focus({ preventScroll: true }), 0);
-        return;
-      }
-      clearForm({
-        statusMessage: 'Novi unos je spreman. Prethodni pacijent nije spremljen jer nema imena.',
-        draftStatusMessage: 'Lokalni draft obrisan za novi unos.',
-        focusFirstField: true
-      });
-      return;
-    }
-
-    let localSaveRequested = false;
-    const wantsLocalSave = window.confirm(
-      'Spremiti trenutnog pacijenta kao lokalni JSON prije novog unosa?\n\nU redu = preuzmi JSON i otvori novi unos.\nOdustani = otvori novi unos bez spremanja.'
-    );
-    if (wantsLocalSave) {
-      localSaveRequested = true;
-      const saved = await savePatientData();
-      if (!saved || hasUnsavedPatientChanges()) {
-        setStatus('Novi unos je odgođen. Spremanje nije dovršeno ili su podaci promijenjeni tijekom spremanja; postojeći unos je sačuvan.', true);
-        return;
-      }
-    }
-
-    clearForm({
-      statusMessage: localSaveRequested
-        ? 'Novi unos je spreman. Prethodni pacijent je ponuđen za lokalno JSON spremanje.'
-        : 'Novi unos je spreman. Prethodni pacijent nije spremljen.',
-      draftStatusMessage: 'Lokalni draft obrisan za novi unos.',
-      focusFirstField: true
+  function requestNewPatientChoice() {
+    return new Promise(resolve => {
+      const dialog = document.createElement('dialog');
+      dialog.id='newPatientChoice'; dialog.className='wizard-action-dialog';
+      dialog.setAttribute('aria-labelledby','newPatientChoiceTitle');
+      dialog.innerHTML='<h2 id="newPatientChoiceTitle">Započeti novog pacijenta?</h2><p>Trenutni unos ostaje otvoren dok ne odaberete što učiniti.</p><p role="status" id="newPatientChoiceStatus"></p><div class="wizard-dialog-actions"><button type="button" data-choice="save">Spremi i započni novi</button><button type="button" data-choice="discard" class="secondary">Odbaci unos i započni novi</button><button type="button" data-choice="cancel" class="secondary">Nastavi uređivati</button></div>';
+      document.body.append(dialog);
+      const finish = choice => {dialog.close();dialog.remove();resolve(choice);};
+      dialog.addEventListener('cancel',event=>{event.preventDefault();finish('cancel');});
+      dialog.querySelector('[data-choice="cancel"]').onclick=()=>finish('cancel');
+      dialog.querySelector('[data-choice="discard"]').onclick=()=>finish('discard');
+      dialog.querySelector('[data-choice="save"]').onclick=async event=>{
+        const button=event.currentTarget; button.disabled=true;
+        const saved=await savePatientData(); button.disabled=false;
+        const status=dialog.querySelector('#newPatientChoiceStatus');
+        if(!saved){status.textContent='Spremanje nije pokrenuto. Unos je sačuvan. Provjerite ime pacijenta i pokušajte ponovno.';return;}
+        status.textContent='Provjerite da je datoteka preuzeta na računalo. Tek zatim otvorite novi unos.';
+        button.textContent='Datoteka je spremljena — započni novi';
+        button.onclick=()=>{if(hasUnsavedPatientChanges()){status.textContent='Unos se promijenio. Nastavite uređivati i ponovno ga spremite.';return;}finish('saved');};
+      };
+      dialog.showModal(); dialog.querySelector('[data-choice="cancel"]').focus();
     });
   }
 
@@ -19376,9 +19449,9 @@ const THERAPY_REQUIRED_PATTERNS = Object.freeze({
     const actions = ['openFirebasePatientDialogBtn','savePatientTopBtn','newPatientEntryBtn'].map(id => document.getElementById(id));
     [...menu.children].forEach(el => archived.append(el));
     const heading = document.createElement('p'); heading.className='options-caption'; heading.textContent='PACIJENT'; menu.append(heading);
-    actions.forEach((button,index) => { button.textContent=['Otvori pacijenta…','Spremi pacijenta','Novi pacijent'][index]; menu.append(button); button.addEventListener('click',()=>menuDetails.open=false); });
+    actions.forEach((button,index) => { button.textContent=['Otvori pacijenta iz datoteke','Spremi pacijenta na računalo','Novi pacijent'][index]; menu.append(button); button.addEventListener('click',()=>menuDetails.open=false); });
     const status = document.createElement('p'); status.className='options-save-status'; status.setAttribute('role','status'); menu.append(status);
-    const refreshStatus = () => { const text=els.patientSyncStatus?.textContent || document.getElementById('patientSyncStatus')?.textContent || ''; status.textContent=/nespremljen/i.test(text) ? 'Postoje nespremljene promjene. Spremi pacijenta prije zatvaranja.' : 'Podaci pacijenta spremaju se u JSON datoteku.'; };
+    const refreshStatus = () => { const text=els.patientSyncStatus?.textContent || document.getElementById('patientSyncStatus')?.textContent || ''; status.textContent=text || 'Spremite pacijenta u datoteku na ovom računalu.'; };
     const oldStatus=document.getElementById('patientSyncStatus');if(oldStatus)new MutationObserver(refreshStatus).observe(oldStatus,{childList:true,subtree:true,characterData:true});refreshStatus();
     const section=document.createElement('p');section.className='options-caption';section.textContent='POSTAVKE';menu.append(section);
     const saved=document.createElement('button');saved.type='button';saved.className='secondary';saved.textContent='Spremljene terapije';saved.addEventListener('click',()=>{menuDetails.open=false;document.getElementById('sharedTherapyGear').click();});menu.append(saved);
@@ -25776,11 +25849,7 @@ function drawPreviewErrorFallback(canvas, pageLabel, error) {
     if (!String(dataAtExportStart.fullName || '').trim()) {
       const message = 'Pacijent neće biti spremljen jer ime i prezime nisu uneseni.';
       setStatus(message, true);
-      try {
-        window.alert(message);
-      } catch (error) {
-        // Status bar remains the fallback when dialogs are not available.
-      }
+      document.getElementById('wizardSaveStatus')?.replaceChildren(document.createTextNode(message));
       return false;
     }
 
@@ -25806,49 +25875,7 @@ function drawPreviewErrorFallback(canvas, pageLabel, error) {
     updateFirebasePatientControls();
 
     try {
-      if (supportsNativeSavePicker()) {
-        try {
-          const savedName = await saveBlobWithNativePicker(blob, suggestedFilename, {
-            types: [
-              {
-                description: 'JSON podatci pacijenta',
-                accept: { 'application/json': ['.json'] }
-              }
-            ]
-          });
-          if (!savedName) {
-            setStatus('Spremanje podataka je otkazano.');
-            return false;
-          }
-          exportCompleted = true;
-          savePatientDraftNow({ quiet: true, startupRecovery: false, recoveryReason: 'manual-json-save' });
-          markPatientJsonExported(savedAt, exportedVersion);
-          void writePatientAuditEvent('patient.localJsonExport', {
-            trigger: 'patient-json-save-picker',
-            changeSummary: 'Lokalni JSON pacijenta spremljen je na zahtjev korisnika.'
-          });
-          setStatus(`Podaci pacijenta spremljeni su u JSON datoteku: ${savedName}`);
-          return true;
-        } catch (error) {
-          if (error && error.name === 'AbortError') {
-            setStatus('Spremanje podataka je otkazano.');
-            return false;
-          }
-          console.warn('Save picker nije uspio, koristi se standardno preuzimanje.', error);
-          setStatus('Preglednik nije dopustio odabir mjesta spremanja. Koristi se standardno preuzimanje.', true);
-        }
-      }
-
-      const filename = askFilename(
-        PAGE.fileNames.patientData,
-        '.json',
-        'spremanje podataka',
-        suggestedFilename.replace(/\.json$/i, '')
-      );
-      if (!filename) {
-        setStatus('Spremanje podataka je otkazano.');
-        return false;
-      }
+      const filename = suggestedFilename;
       downloadBlob(filename, blob);
       exportCompleted = true;
       savePatientDraftNow({ quiet: true, startupRecovery: false, recoveryReason: 'manual-json-save' });
@@ -25857,7 +25884,7 @@ function drawPreviewErrorFallback(canvas, pageLabel, error) {
         trigger: 'patient-json-download',
         changeSummary: 'Lokalni JSON pacijenta preuzet je na zahtjev korisnika.'
       });
-      setStatus(`Podaci pacijenta spremljeni su u JSON datoteku: ${filename}`);
+      setStatus(`Preuzimanje je pokrenuto: ${filename}. Provjerite datoteku u preuzimanjima preglednika.`);
       return true;
     } catch (error) {
       console.error('Lokalni JSON nije moguće spremiti.', error);
@@ -26567,7 +26594,7 @@ function drawPreviewErrorFallback(canvas, pageLabel, error) {
     if (syncState.status === 'saving') return LOCAL_PATIENT_STORAGE_ONLY
       ? 'Lokalno spremanje: spremam aktualnu verziju pacijenta u JSON...'
       : 'Sinkronizacija: spremam pacijenta u Firebase...';
-    if (syncState.status === 'exported') return `Lokalno spremanje: aktualna verzija spremljena je u JSON${savedAt ? ` (${savedAt})` : ''}. Nema nespremljenih promjena nakon izvoza.`;
+    if (syncState.status === 'exported') return `Preuzimanje aktualne verzije je pokrenuto${savedAt ? ` (${savedAt})` : ''}. Provjerite datoteku u preuzimanjima preglednika.`;
     if (syncState.status === 'synced') return `Sinkronizacija: spremljeno u ${getPatientSyncTargetLabel(syncState.lastSaveTarget)}${savedAt ? ` (${savedAt})` : ''}.`;
     if (syncState.status === 'failed') return `Sinkronizacija: spremanje nije uspjelo${syncState.lastError ? ` — ${syncState.lastError}` : ''}.`;
     if (syncState.status === 'offline') return LOCAL_PATIENT_STORAGE_ONLY
@@ -26597,7 +26624,7 @@ function drawPreviewErrorFallback(canvas, pageLabel, error) {
     if (LOCAL_PATIENT_STORAGE_ONLY && els.savePatientTopBtn) {
       const busy = Boolean(syncState.saveInFlight);
       els.savePatientTopBtn.disabled = busy;
-      els.savePatientTopBtn.textContent = busy ? 'Spremam JSON...' : 'Spremi JSON';
+      els.savePatientTopBtn.textContent = busy ? 'Pripremam datoteku…' : 'Spremi pacijenta na računalo';
       els.savePatientTopBtn.setAttribute('aria-busy', busy ? 'true' : 'false');
     }
   }
@@ -28210,13 +28237,13 @@ function drawPreviewErrorFallback(canvas, pageLabel, error) {
       const hasData = isPatientDataDifferentFromEmpty(getFormData());
       if (els.openFirebasePatientDialogBtn) {
         els.openFirebasePatientDialogBtn.disabled = false;
-        els.openFirebasePatientDialogBtn.textContent = 'Otvori JSON';
+        els.openFirebasePatientDialogBtn.textContent = 'Otvori pacijenta iz datoteke';
         els.openFirebasePatientDialogBtn.title = 'Učitaj lokalnu JSON datoteku pacijenta s računala.';
       }
       if (els.savePatientTopBtn) {
         const saveBusy = Boolean(state.patientSyncState.saveInFlight);
         els.savePatientTopBtn.disabled = saveBusy;
-        els.savePatientTopBtn.textContent = saveBusy ? 'Spremam JSON...' : 'Spremi JSON';
+        els.savePatientTopBtn.textContent = saveBusy ? 'Pripremam datoteku…' : 'Spremi pacijenta na računalo';
         els.savePatientTopBtn.setAttribute('aria-busy', saveBusy ? 'true' : 'false');
         els.savePatientTopBtn.title = 'Spremi pacijenta samo kao lokalnu JSON datoteku.';
       }
@@ -30533,6 +30560,12 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
   }
 
   async function printPages(options = {}) {
+    if (typeof wizardPrintIssues === 'function' && wizardPrintIssues().length) {
+      wizardGo(7);
+      document.getElementById('wizardPrintIssues')?.focus();
+      setStatus('Ispis nije pokrenut. Ispravite označene podatke u završnom pregledu.', true);
+      return;
+    }
     renderAll();
 
     if (!(await confirmPrintDespiteWarnings())) {
@@ -30565,7 +30598,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       await printCanvasPages(canvases, options.suppressBackground === true ? 'Ispis bez pozadinske temperaturne liste' : 'Ispis temperaturne liste');
       await writeCurrentPatientPrintAuditEvent('patient.print', firebasePrintSaveResult);
       setStatus(
-        getPrintStatusAfterFirebaseSave(firebasePrintSaveResult),
+        LOCAL_PATIENT_STORAGE_ONLY ? 'Ispis je pripremljen. Ispis ne sprema pacijenta; za datoteku odaberite Spremi pacijenta na računalo.' : getPrintStatusAfterFirebaseSave(firebasePrintSaveResult),
         Boolean(firebasePrintSaveResult?.attempted && !firebasePrintSaveResult?.saved)
       );
     } catch (error) {
@@ -31708,7 +31741,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
         updates[key] = parsed[key];
       }
       const replaced = Object.keys(updates).filter(key => wizard.manual.has(key) && current[key] && current[key] !== updates[key]);
-      if (replaced.length && !window.confirm('Ponovna obrada zamijenit će ručno uređene podatke u prepoznatim poljima. Želite li nastaviti?')) { status.textContent = 'Ručne izmjene su sačuvane. Za nastavak bez obrade odaberite „Zadrži unos i nastavi”.'; return; }
+      if (replaced.length && !window.confirm('Ponovna obrada zamijenit će ručno uređene podatke u prepoznatim poljima. Želite li nastaviti?')) { status.textContent = 'Ručne izmjene su sačuvane. Za nastavak bez obrade odaberite „Nastavi bez obrade”.'; return; }
       const manual = new Set(wizard.manual); Object.keys(updates).forEach(key => manual.delete(key));
       const merged = {...current,...updates,wizardSource:source,wizardParsedSource:source};
       if (updates.fullName && updates.fullName !== current.fullName) { delete merged.firstName; delete merged.lastName; }
@@ -31759,6 +31792,9 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     if (data.microbiologyEnabled) (data.microbiologyResults || []).forEach((row,index) => {
       if (row.date || row.sample || row.result) sections.push([`Mikrobiološki nalaz ${index+1}`,`Datum: ${row.date || 'nije unesen'}\nUzorak: ${row.sample || 'nije unesen'}\nRezultat: ${row.result || 'nije unesen'}`]);
     });
+    if (data.showFollowUpControlOnList && (data.followUpControl || data.followUpControlDate)) {
+      sections.push(['Kontrola', [data.followUpControlDate ? 'Datum kontrole: '+formatIsoDateToCroatian(data.followUpControlDate) : 'Datum kontrole nije unesen', data.followUpControl].filter(Boolean).join('\n')]);
+    }
     return sections;
   }
   function wizardSupplementCanvases(data = getFormData(), sections = wizardContinuationSections(data)) { if (!sections.length) return [];
@@ -31850,7 +31886,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     const first=document.getElementById('wizardStep0');
     const source=wizardField('Tekst OHBP nalaza','wizardSource',first,true);source.placeholder='Ovdje zalijepite cijeli nalaz…';source.rows=12;source.addEventListener('input',()=>{wizard.source=source.value;wizardChanged('wizardSource');});
     first.append(wizardElement('p',{id:'wizardSourceStatus',role:'status'},'Zalijepite tekst nalaza. Ako nemate nalaz, nastavite s ručnim unosom.'));
-    const skip=wizardElement('button',{type:'button',class:'secondary'},'Zadrži unos i nastavi');skip.addEventListener('click',()=>wizardGo(1));first.append(skip);
+    const skip=wizardElement('button',{type:'button',class:'secondary'},'Nastavi bez obrade');skip.addEventListener('click',()=>wizardGo(1));first.append(skip);
     const identity=document.getElementById('wizardStep1');
     for(const [id,label] of [['firstName','Ime'],['lastName','Prezime']]) {const input=wizardField(label,id,identity);input.addEventListener('input',()=>{wizard[id]=input.value;els.fullName.value=[wizard.firstName,wizard.lastName].filter(Boolean).join(' ').trim();wizardChanged('fullName');});}
     wizardMoveField('birthYear',1);wizardMoveField('admissionDate',1);wizardMoveField('patientOrigin',1);
@@ -31959,7 +31995,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     previousSupplementRender();screenPreviewIndex=0;refreshScreenPreview();
     document.querySelector('#wizardOptionsBody .wizard-accessible-preview')?.remove();
     const textPreview=document.querySelector('#wizardSupplement .wizard-accessible-preview');
-    if(textPreview) textPreview.remove();
+    if(textPreview) textPreview.remove(); // A visible summary is assembled below the final validation.
   };
   const periodOptions=wizardElement('details');periodOptions.append(wizardElement('summary',{},'Razdoblje temperaturne liste'));
   periodOptions.append(document.getElementById('previewPageControls'));
@@ -32231,6 +32267,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     syncInlineFonts();workflowPanels[wizard.step].scrollTop=0;
   };
   document.addEventListener('keydown',event=>{if(event.key==='Escape' && wizard.step===workflowSteps.length-1 && !fontDialog.open){event.preventDefault();wizardGo(workflowSteps.length-2);}});
+  initWizardReviewFixes();
   wizard.visited=0;wizardGo(0);
   // Reveal only after the new eight-step interface is fully assembled.
   const readyAppRoot=document.getElementById('appRoot');
