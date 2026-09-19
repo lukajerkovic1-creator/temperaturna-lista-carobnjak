@@ -9797,64 +9797,6 @@ Primjer 3..."></textarea>
     "cGluO1p5cHJleGEgVmVsb3RhYjtOMDVBSDAzIDE2NDt0YmwuIHJhc3AuIHphIHVzdGEgMjh4MTAgbWc7O087b3JhbG5vO3Auby58cGVyIG9zfHBvfG9yYWxub3xuYSB1c3RhO29zbm92bmE7MTUuMDYuMjAyNjtsaWpla19pbGlfcHJpcHJhdmFrDQowODUyZjUwMTZmNTg3MDBlO3R2b3JuaWNraTtaeXByZXhhIFZlbG90YWI7enlwcmV4YSB2ZWxvdGFiO29sYW56YXBpbjtaeXByZXhhIFZlbG90YWI7TjA1QUgwMyAxNjM7dGJsLiByYXNwLiB6YSB1c3RhIDI4eDUgbWc7O087b3JhbG5vO3Auby58cGVyIG9zfHBvfG9yYWxub3xuYSB1c3RhO29zbm92bmE7MTUuMDYuMjAyNjtsaWpla19pbGlfcHJpcHJhdmFrDQo2M2Q5Y2M1MTFlNGFjYTg3O3R2b3JuaWNraTtaeXRpZ2E7enl0aWdhO2FiaXJhdGVyb247Wnl0aWdhO0wwMkJYMDMgMTYyO3RibC4gZmlsbSBvYmwuIDYweDUwMCBtZzs7TztvcmFsbm87cC5vLnxwZXIgb3N8cG98b3JhbG5vfG5hIHVzdGE7b3Nub3ZuYTsxNS4wNi4yMDI2O2xpamVrX2lsaV9wcmlwcmF2YWsNCjc3MmMxMDU3MzExOGEzMjk7dHZvcm5pY2tpO1p5dm94aWQ7enl2b3hpZDtsaW5lem9saWQ7Wnl2b3hpZDtKMDFYWDA4IDA2MTtvdG9wLiB6YSBpbmYuLCB2cmXEhy4gcGxhc3QuIDEweDYwMCBtZy8zMDAgbWw7MzAwIG1sO1A7cGFyZW50ZXJhbG5vO2kudi58aXZ8aW50cmF2ZW5vem5vfGludHJhdmVuc2tpfGkubS58aW18aW50cmFtdXNrdWxhcm5vfHMuYy58c2N8c3Vwa3V0YW5vfHBhcmVudGVyYWxub3xp",
     "bmZ1emlqYXxpbmouO29zbm92bmE7MTUuMDYuMjAyNjtsaWpla19pbGlfcHJpcHJhdmFrDQo4ZDU2YTNkNTA1ZDAyMDk1O3R2b3JuaWNraTtaeXZveGlkO3p5dm94aWQ7bGluZXpvbGlkO1p5dm94aWQ7SjAxWFgwOCAxNjE7dGJsLiBmaWxtIG9ibC4gMTB4NjAwIG1nOztPO29yYWxubztwLm8ufHBlciBvc3xwb3xvcmFsbm98bmEgdXN0YTtvc25vdm5hOzE1LjA2LjIwMjY7bGlqZWtfaWxpX3ByaXByYXZhaw0K"
   ];
-  // v0.9.1: explicit recovery, complete review and independent preview zoom.
-  function wizardPrintIssues() {
-    const issues=[];
-    const add=(id,step,message)=>issues.push({id,step,message});
-    for(const [id,label] of [['firstName','ime'],['lastName','prezime']])
-      if(!document.getElementById(id).value.trim())add(id,1,'Unesite '+label+' pacijenta.');
-    if(!/^(18|19|20)\d{2}$/.test(els.birthYear.value.trim()))add('birthYear',1,'Unesite četveroznamenkasto godište.');
-    if(!parseCroatianDateToIso(els.admissionDate.value))add('admissionDate',1,'Datum prijema nije valjan. Unesite dd.mm.gggg.');
-    if(els.showFollowUpControlOnList.checked && !parseCroatianDateToIso(els.followUpControlDate.value))
-      add('followUpControlDate',6,'Unesite valjan datum kontrole ili odaberite da kontrola nije potrebna.');
-    if(wizard.microbiologyEnabled)wizard.microbiologyResults.forEach((row,index)=>{
-      if(row.date && !parseCroatianDateToIso(row.date))add('micro-'+index+'-date',6,'Datum mikrobiološkog nalaza '+(index+1)+' nije valjan.');
-    });
-    return issues;
-  }
-  function initWizardReviewFixes() {
-    const warnings=wizardElement('div',{id:'wizardPrintIssues',role:'status',tabindex:'-1'});
-    const summary=wizardElement('details',{id:'wizardReadableSummary'});
-    summary.append(wizardElement('summary',{},'Čitljiv pregled podataka prije ispisa'));
-    const content=wizardElement('div');summary.append(content);
-    const save=wizardElement('button',{type:'button',id:'wizardSavePatient'},'Spremi pacijenta na računalo');
-    const saveStatus=wizardElement('p',{id:'wizardSaveStatus',role:'status','aria-live':'polite'});
-    printActions.prepend(save);previewControls.after(warnings,saveStatus,summary);
-    function syncSave(){save.disabled=Boolean(state.patientSyncState.saveInFlight);save.textContent=save.disabled?'Pripremam datoteku…':'Spremi pacijenta na računalo';saveStatus.textContent=getPatientSyncStatusMessage();}
-    save.onclick=async()=>{const result=await savePatientData();syncSave();if(!result)saveStatus.textContent='Spremanje nije pokrenuto. Provjerite ime i prezime; uneseni podaci su sačuvani.';};
-    if(els.patientSyncStatus)new MutationObserver(syncSave).observe(els.patientSyncStatus,{childList:true,subtree:true,characterData:true});
-    function review(){
-      const issues=wizardPrintIssues();warnings.replaceChildren();warnings.hidden=!issues.length;
-      if(issues.length){warnings.append(wizardElement('strong',{},'Prije ispisa ispravite:'));
-        issues.forEach(issue=>{const row=wizardElement('div',{class:'wizard-review-issue'});const fix=wizardElement('button',{type:'button',class:'secondary'},issue.id==='admissionDate'?'Ispravi datum':'Ispravi');fix.onclick=()=>{wizardGo(issue.step);const field=document.getElementById(issue.id);field?.focus();field?.scrollIntoView({block:'center'});};row.append(wizardElement('span',{},issue.message),fix);warnings.append(row);});}
-      print.disabled=printWithoutBackground.disabled=issues.length>0;
-      content.replaceChildren();const data=getFormData();
-      content.append(wizardElement('h3',{},'Pacijent'),wizardElement('p',{},[data.fullName,data.birthYear,'Prijem: '+(data.admissionDate?formatIsoDateToCroatian(data.admissionDate):'nije valjan')].join(' · ')));
-      wizardSections(data).forEach(([title,text])=>content.append(wizardElement('h3',{},title),wizardElement('pre',{},text)));
-      if(data.showFollowUpControlOnList && (data.followUpControl || data.followUpControlDate))content.append(wizardElement('p',{class:'wizard-review-note'},'Kontrola je uključena u nastavne stranice nakon temperaturne liste.'));
-      syncSave();
-    }
-    let zoom=0;
-    const zoomSelect=wizardElement('select',{'aria-label':'Povećanje pregleda',id:'wizardPreviewZoom'});
-    [[0,'Cijela stranica'],[100,'Povećaj pregled: 100%'],[150,'Povećaj pregled: 150%'],[200,'Povećaj pregled: 200%']].forEach(([value,label])=>zoomSelect.append(wizardElement('option',{value:String(value)},label)));
-    previewControls.insertBefore(zoomSelect,printActions);
-    function applyZoom(){const canvas=previewStage.querySelector('canvas');if(!canvas)return;previewStage.classList.toggle('is-zoomed',zoom>0);canvas.style.setProperty('--review-width',(1123*zoom/100)+'px');}
-    zoomSelect.onchange=()=>{zoom=Number(zoomSelect.value);applyZoom();previewStage.scrollTop=previewStage.scrollLeft=0;};
-    const previousRefresh=refreshScreenPreview;refreshScreenPreview=function(){previousRefresh();applyZoom();};
-    const previousGo=wizardGo;wizardGo=function(step){previousGo(step);if(wizard.step===7)review();updateSourceActions();};
-    const source=document.getElementById('wizardSource');
-    function updateSourceActions(){if(wizard.step===0)document.getElementById('wizardNext').textContent=source.value.trim()?'Obradi nalaz i nastavi':'Ručni unos';}
-    source.addEventListener('input',updateSourceActions);
-    document.getElementById('wizardStep0').querySelector('button').textContent='Nastavi bez obrade';
-    document.getElementById('wizardStep0').querySelector('button').title='Zadržava postojeće podatke bez automatskog raspoređivanja teksta nalaza.';
-    const originalNext=wizardNext;
-    document.getElementById('wizardNext').removeEventListener('click',originalNext);
-    document.getElementById('wizardNext').addEventListener('click',()=>{
-      if(wizard.step===1 && !parseCroatianDateToIso(els.admissionDate.value)){wizardValidate();els.admissionDate.focus();return;}
-      originalNext();
-    });
-    syncSave();
-  }
 
 })();
 
@@ -32276,6 +32218,65 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
   readyAppRoot.inert=false;
 
 
+
+  // v0.9.1: explicit recovery, complete review and independent preview zoom.
+  function wizardPrintIssues() {
+    const issues=[];
+    const add=(id,step,message)=>issues.push({id,step,message});
+    for(const [id,label] of [['firstName','ime'],['lastName','prezime']])
+      if(!document.getElementById(id).value.trim())add(id,1,'Unesite '+label+' pacijenta.');
+    if(!/^(18|19|20)\d{2}$/.test(els.birthYear.value.trim()))add('birthYear',1,'Unesite četveroznamenkasto godište.');
+    if(!parseCroatianDateToIso(els.admissionDate.value))add('admissionDate',1,'Datum prijema nije valjan. Unesite dd.mm.gggg.');
+    if(els.showFollowUpControlOnList.checked && !parseCroatianDateToIso(els.followUpControlDate.value))
+      add('followUpControlDate',6,'Unesite valjan datum kontrole ili odaberite da kontrola nije potrebna.');
+    if(wizard.microbiologyEnabled)wizard.microbiologyResults.forEach((row,index)=>{
+      if(row.date && !parseCroatianDateToIso(row.date))add('micro-'+index+'-date',6,'Datum mikrobiološkog nalaza '+(index+1)+' nije valjan.');
+    });
+    return issues;
+  }
+  function initWizardReviewFixes() {
+    const warnings=wizardElement('div',{id:'wizardPrintIssues',role:'status',tabindex:'-1'});
+    const summary=wizardElement('details',{id:'wizardReadableSummary'});
+    summary.append(wizardElement('summary',{},'Čitljiv pregled podataka prije ispisa'));
+    const content=wizardElement('div');summary.append(content);
+    const save=wizardElement('button',{type:'button',id:'wizardSavePatient'},'Spremi pacijenta na računalo');
+    const saveStatus=wizardElement('p',{id:'wizardSaveStatus',role:'status','aria-live':'polite'});
+    printActions.prepend(save);previewControls.after(warnings,saveStatus,summary);
+    function syncSave(){save.disabled=Boolean(state.patientSyncState.saveInFlight);save.textContent=save.disabled?'Pripremam datoteku…':'Spremi pacijenta na računalo';saveStatus.textContent=getPatientSyncStatusMessage();}
+    save.onclick=async()=>{const result=await savePatientData();syncSave();if(!result)saveStatus.textContent='Spremanje nije pokrenuto. Provjerite ime i prezime; uneseni podaci su sačuvani.';};
+    if(els.patientSyncStatus)new MutationObserver(syncSave).observe(els.patientSyncStatus,{childList:true,subtree:true,characterData:true});
+    function review(){
+      const issues=wizardPrintIssues();warnings.replaceChildren();warnings.hidden=!issues.length;
+      if(issues.length){warnings.append(wizardElement('strong',{},'Prije ispisa ispravite:'));
+        issues.forEach(issue=>{const row=wizardElement('div',{class:'wizard-review-issue'});const fix=wizardElement('button',{type:'button',class:'secondary'},issue.id==='admissionDate'?'Ispravi datum':'Ispravi');fix.onclick=()=>{wizardGo(issue.step);const field=document.getElementById(issue.id);field?.focus();field?.scrollIntoView({block:'center'});};row.append(wizardElement('span',{},issue.message),fix);warnings.append(row);});}
+      print.disabled=printWithoutBackground.disabled=issues.length>0;
+      content.replaceChildren();const data=getFormData();
+      content.append(wizardElement('h3',{},'Pacijent'),wizardElement('p',{},[data.fullName,data.birthYear,'Prijem: '+(data.admissionDate?formatIsoDateToCroatian(data.admissionDate):'nije valjan')].join(' · ')));
+      wizardSections(data).forEach(([title,text])=>content.append(wizardElement('h3',{},title),wizardElement('pre',{},text)));
+      if(data.showFollowUpControlOnList && (data.followUpControl || data.followUpControlDate))content.append(wizardElement('p',{class:'wizard-review-note'},'Kontrola je uključena u nastavne stranice nakon temperaturne liste.'));
+      syncSave();
+    }
+    let zoom=0;
+    const zoomSelect=wizardElement('select',{'aria-label':'Povećanje pregleda',id:'wizardPreviewZoom'});
+    [[0,'Cijela stranica'],[100,'Povećaj pregled: 100%'],[150,'Povećaj pregled: 150%'],[200,'Povećaj pregled: 200%']].forEach(([value,label])=>zoomSelect.append(wizardElement('option',{value:String(value)},label)));
+    previewControls.insertBefore(zoomSelect,printActions);
+    function applyZoom(){const canvas=previewStage.querySelector('canvas');if(!canvas)return;previewStage.classList.toggle('is-zoomed',zoom>0);canvas.style.setProperty('--review-width',(1123*zoom/100)+'px');}
+    zoomSelect.onchange=()=>{zoom=Number(zoomSelect.value);applyZoom();previewStage.scrollTop=previewStage.scrollLeft=0;};
+    const previousRefresh=refreshScreenPreview;refreshScreenPreview=function(){previousRefresh();applyZoom();};
+    const previousGo=wizardGo;wizardGo=function(step){previousGo(step);if(wizard.step===7)review();updateSourceActions();};
+    const source=document.getElementById('wizardSource');
+    function updateSourceActions(){if(wizard.step===0)document.getElementById('wizardNext').textContent=source.value.trim()?'Obradi nalaz i nastavi':'Ručni unos';}
+    source.addEventListener('input',updateSourceActions);
+    document.getElementById('wizardStep0').querySelector('button').textContent='Nastavi bez obrade';
+    document.getElementById('wizardStep0').querySelector('button').title='Zadržava postojeće podatke bez automatskog raspoređivanja teksta nalaza.';
+    const originalNext=wizardNext;
+    document.getElementById('wizardNext').removeEventListener('click',originalNext);
+    document.getElementById('wizardNext').addEventListener('click',()=>{
+      if(wizard.step===1 && !parseCroatianDateToIso(els.admissionDate.value)){wizardValidate();els.admissionDate.focus();return;}
+      originalNext();
+    });
+    syncSave();
+  }
 
 })();
 
