@@ -5662,10 +5662,11 @@ body{background:radial-gradient(ellipse at 12% 0%,#dceaf4,transparent 55%),#edf2
 .wizard-print-preview #wizardStep9 #wizardSaveStatus{display:block!important;flex:none;margin:0;font-size:16px;line-height:1.4}
 #wizardReadableSummary{flex:none;background:white;border:1px solid #c8d9e2;border-radius:8px;padding:12px}
 #wizardReadableSummary summary{font-size:18px;font-weight:600;cursor:pointer;min-height:32px}
-#wizardReadableSummary>div{max-height:35vh;overflow:auto;font-size:19px;line-height:1.5}
+#wizardReadableSummary>div{font-size:19px;line-height:1.5}
 #wizardReadableSummary pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;margin:8px 0}
 #wizardReadableSummary h3{font-size:20px;margin:16px 0 4px}.wizard-review-note{font-weight:600}
-#wizardPreviewZoom{min-height:44px;font-size:17px;max-width:100%;padding:8px;border:1px solid #b8cbd7;border-radius:8px;background:white;color:#203b4a}
+#wizardPreviewZoom{min-height:44px;font-size:17px;width:auto;max-width:100%;padding:8px;border:1px solid #b8cbd7;border-radius:8px;background:white;color:#203b4a}
+#wizardCard .wizard-print-actions button:disabled{opacity:.45!important;cursor:not-allowed;box-shadow:none!important}
 #wizardCard .wizard-preview-stage{overflow:auto;align-items:flex-start}
 #wizardCard .wizard-preview-stage.is-zoomed{display:block}
 #wizardCard .wizard-preview-stage.is-zoomed canvas{width:var(--review-width)!important;height:auto!important;max-width:none!important;max-height:none!important;object-fit:initial}
@@ -18285,11 +18286,12 @@ const THERAPY_REQUIRED_PATTERNS = Object.freeze({
   function requestNewPatientChoice() {
     return new Promise(resolve => {
       const dialog = document.createElement('dialog');
+      const returnFocus = document.querySelector('#wizardOptions > summary');
       dialog.id='newPatientChoice'; dialog.className='wizard-action-dialog';
       dialog.setAttribute('aria-labelledby','newPatientChoiceTitle');
       dialog.innerHTML='<h2 id="newPatientChoiceTitle">Započeti novog pacijenta?</h2><p>Trenutni unos ostaje otvoren dok ne odaberete što učiniti.</p><p role="status" id="newPatientChoiceStatus"></p><div class="wizard-dialog-actions"><button type="button" data-choice="save">Spremi i započni novi</button><button type="button" data-choice="discard" class="secondary">Odbaci unos i započni novi</button><button type="button" data-choice="cancel" class="secondary">Nastavi uređivati</button></div>';
       document.body.append(dialog);
-      const finish = choice => {dialog.close();dialog.remove();resolve(choice);};
+      const finish = choice => {dialog.close();dialog.remove();if(choice==='cancel')returnFocus?.focus();resolve(choice);};
       dialog.addEventListener('cancel',event=>{event.preventDefault();finish('cancel');});
       dialog.querySelector('[data-choice="cancel"]').onclick=()=>finish('cancel');
       dialog.querySelector('[data-choice="discard"]').onclick=()=>finish('discard');
@@ -26543,10 +26545,10 @@ function drawPreviewErrorFallback(canvas, pageLabel, error) {
       ? 'Sinkronizacija: online spremanje je isključeno; koristi lokalni JSON.'
       : 'Sinkronizacija: pacijent nije spremljen jer Firebase prijava ili klinički kontekst nisu dostupni.';
     if (syncState.status === 'localOnly') return LOCAL_PATIENT_STORAGE_ONLY
-      ? 'Lokalno spremanje: aktualna verzija nije spremljena u JSON. Spremi JSON ili izričito potvrdi ispis nespremljene kopije.'
+      ? 'Aktualna verzija nije preuzeta na računalo. Odaberite Spremi pacijenta na računalo.'
       : `Sinkronizacija: pacijent je spremljen samo lokalno u šifrirani oporavak${savedAt ? ` (${savedAt})` : ''}. Prije ispisa treba Firebase spremanje ili izričita potvrda.`;
     return LOCAL_PATIENT_STORAGE_ONLY
-      ? 'Lokalno spremanje: postoje nespremljene promjene. Spremi novi JSON prije zatvaranja ili ispisa.'
+      ? 'Postoje nespremljene promjene. Odaberite Spremi pacijenta na računalo prije zatvaranja.'
       : 'Sinkronizacija: postoje nespremljene promjene.';
   }
 
