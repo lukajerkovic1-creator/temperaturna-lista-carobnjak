@@ -9943,7 +9943,7 @@ Primjer 3..."></textarea>
   // ============================================================
   // VERZIJA APLIKACIJE — jedini izvor istine
   // ============================================================
-  const APP_VERSION = '0.10.5';
+  const APP_VERSION = '0.10.6';
   const APP_BUILD_SHA = '28c562f650d3';
   const PARSER_VERSION = 'temperaturna-lista-parser-v2';
   const PARSER_PROVENANCE_SCHEMA = 'temperaturna-lista-parser-provenance-v1';
@@ -32399,7 +32399,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     try { const saved=JSON.parse(localStorage.getItem(STORE)||'{}');
       for(const [key,size] of Object.entries(saved)) if(/^[a-zA-Z0-9]+$/.test(key) && Number.isFinite(size) && size>=MIN && size<=MAX) preferences[key]=size;
     } catch(error) { /* Malformed or unavailable storage must not prevent clinical entry. */ }
-    let cacheKey='', documents=[], selected=null, noticeText='';
+    let cacheKey='', documents=[], selected=null, noticeText='', blockEdits={};
     const measure=document.createElement('canvas').getContext('2d');
     const nativeDraw=originalClinicalDraw;
     const baseRender=originalRenderPageToCanvas;
@@ -32408,11 +32408,29 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     withWizardFonts=callback=>callback();
     drawTextBox=nativeDraw;
     const oldGet=getFormData;
-    getFormData=function(){const data=oldGet();data.sectionFonts={};return data;};
+    getFormData=function(){const data=oldGet();data.sectionFonts={};data.printBlockEdits=JSON.parse(JSON.stringify(blockEdits));return data;};
+    const oldSet=setFormData;
+    setFormData=function(data={}){blockEdits=JSON.parse(JSON.stringify(data.printBlockEdits||{}));cacheKey='';return oldSet(data);};
+    const oldValidate=validatePatientDataObject;
+    validatePatientDataObject=function(candidate){
+      if(!isPlainJsonObject(candidate))return oldValidate(candidate);
+      const base={...candidate};delete base.printBlockEdits;
+      const result=oldValidate(base), edits=candidate.printBlockEdits||{};
+      if(!isPlainJsonObject(edits)||Object.keys(edits).length>500)result.errors.push('Neispravne izmjene blokova.');
+      else {
+        const clean={};
+        for(const [id,e] of Object.entries(edits)){
+          if(!/^[a-zA-Z0-9:]+$/.test(id)||!isPlainJsonObject(e)||typeof e.source!=='string'||typeof e.text!=='string'||e.source.length>100000||e.text.length>100000||!Number.isFinite(e.size)||e.size<MIN||e.size>MAX)result.errors.push('Neispravna izmjena bloka.');
+          else clean[id]={source:e.source,text:e.text,size:e.size};
+        }
+        result.data.printBlockEdits=clean;
+      }
+      result.ok=!result.errors.length;return result;
+    };
     wizardFonts={};
     const notice=wizardElement('div',{id:'printBlockNotice',role:'status','aria-live':'polite'});
     previewControls.after(notice);
-    const menu=wizardElement('div',{id:'printBlockMenu',role:'dialog','aria-label':'Veličina fonta odabranog bloka',hidden:''});
+    const menu=wizardElement('dialog',{id:'printBlockMenu','aria-label':'Uređivanje tekstualnog bloka',hidden:''});
     const title=wizardElement('strong');
     const input=wizardElement('input',{type:'number',min:'8',max:'40',step:'0.5',list:'printBlockSizes','aria-label':'Veličina fonta u pt'});
     const sizes=wizardElement('datalist',{id:'printBlockSizes'});
@@ -32422,11 +32440,16 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     const reset=wizardElement('button',{type:'button'},'Zadano');
     const close=wizardElement('button',{type:'button','aria-label':'Zatvori izbornik'},'×');
     const row=wizardElement('div');row.append(minus,input,wizardElement('span',{},'pt'),plus,reset,close);
-    const savedLabel=wizardElement('small');const feedback=wizardElement('small',{role:'status','aria-live':'polite'});menu.append(title,row,savedLabel,feedback,sizes);document.body.append(menu);
+    const editor=wizardElement('textarea',{'aria-label':'Tekst odabranog bloka',spellcheck:'false'});
+    const apply=wizardElement('button',{type:'button'},'Primijeni');
+    const cancel=wizardElement('button',{type:'button'},'Odustani');
+    const restore=wizardElement('button',{type:'button'},'Vrati izvorni tekst');
+    const actions=wizardElement('div');actions.append(restore,cancel,apply);
+    const savedLabel=wizardElement('small');const feedback=wizardElement('small',{role:'status','aria-live':'polite'});menu.append(title,row,savedLabel,editor,feedback,actions,sizes);document.body.append(menu);
     const printHost=wizardElement('div',{id:'measuredPrintDocument'});document.body.append(printHost);
     const css=document.createElement('style');css.textContent=`
       #printBlockMenu{position:fixed;z-index:2147483647;box-sizing:border-box;max-width:calc(100vw - 16px);padding:10px;background:#fff;color:#19364a;border:1px solid #a5bcc9;border-radius:9px;box-shadow:0 5px 22px #19364a33;font:14px Arial;}
-      #printBlockMenu[hidden]{display:none}#printBlockMenu strong,#printBlockMenu small{display:block;margin:3px 0 8px}#printBlockMenu>div{display:flex;align-items:center;gap:5px;flex-wrap:wrap}#printBlockMenu input{width:90px;min-height:36px}#printBlockMenu button{min-height:36px;padding:6px 10px}
+      #printBlockMenu{width:680px;max-height:calc(100dvh - 32px);margin:auto;padding:22px;overflow:auto}#printBlockMenu::backdrop{background:#102d4866}#printBlockMenu textarea{display:block;box-sizing:border-box;width:100%;height: min(42vh,360px);min-height:150px;margin:16px 0;padding:16px;border:2px solid #abc7d8;border-radius:8px;resize:vertical;font-family:'Times New Roman',serif;line-height:1.25;color:#111;background:#fff;white-space:pre-wrap}#printBlockMenu>div:last-of-type{justify-content:flex-end}#printBlockMenu>div:last-of-type button:last-child{background:#126f90;color:white}#printBlockMenu[hidden]{display:none}#printBlockMenu strong,#printBlockMenu small{display:block;margin:3px 0 8px}#printBlockMenu>div{display:flex;align-items:center;gap:5px;flex-wrap:wrap}#printBlockMenu input{width:90px;min-height:36px}#printBlockMenu button{min-height:36px;padding:6px 10px}
       #printBlockNotice{font:14px Arial;color:#23556c;max-height:70px;overflow:auto;padding:3px 10px}#printBlockNotice[data-error=true]{color:#a02222;background:#fff2ee}#printBlockNotice:empty{display:none}
       #measuredPrintDocument{display:none}
       @media print{@page{size:A4 landscape;margin:0}html,body{margin:0!important;padding:0!important;width:297mm!important;height:auto!important;overflow:visible!important;background:#fff!important}body>*{display:none!important}body>#measuredPrintDocument{display:block!important;position:static!important}#measuredPrintDocument img{display:block!important;width:297mm!important;height:210mm!important;break-after:page;page-break-after:always}#measuredPrintDocument img:last-child{break-after:auto;page-break-after:auto}#measuredPrintDocument p{font:16pt Arial;color:#a00000;padding:15mm}}
@@ -32450,7 +32473,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       // blood/coagulation columns for the same day may move horizontally.
       const placed=[];
       for(const b of blocks.filter(b=>inlineLabKeys.has(b.key)).sort((a,b)=>a.base.x-b.base.x||a.base.y-b.base.y)){
-        b.width=b.field.width=Math.max(b.width,Math.ceil(b.inkWidth));
+        b.width=b.field.width=Math.max(6,Math.ceil(b.inkWidth));
         const neighbours=placed.filter(other=>other.base.blockIndex===b.base.blockIndex &&
           b.field.y<other.field.y+other.contentHeight && other.field.y<b.field.y+b.contentHeight);
         b.field.x=Math.max(b.base.x,...neighbours.map(other=>other.field.x+other.width+GAP));
@@ -32506,7 +32529,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     }
 
     function fit(page) {
-      const sizes=Object.fromEntries(page.source.map(b=>[b.id,preferences[b.key]||b.defaultSize]));
+      const sizes=Object.fromEntries(page.source.map(b=>[b.id,blockEdits[b.id]?.size||preferences[b.key]||b.defaultSize]));
       let result=solve(page,sizes);
       // Only reduce failing blocks; unrelated fixed boxes must keep their font sizes.
       for(let count=0;result.issues.length && count<page.source.length*65;count++) {
@@ -32578,16 +32601,22 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
         const supplements=captureSupplements(data);
         supplements.forEach((page,index)=>page.number=documents.length+index+1);
         documents.push(...supplements);
-        documents.forEach(page=>page.result=fit(page));cacheKey=signature;selected=null;noticeText='';menu.hidden=true;
+        for(const page of documents)for(const b of page.source){
+          b.originalText=b.text;
+          const edit=blockEdits[b.id];
+          if(edit?.source===b.text)b.text=edit.text;
+          else if(edit)delete blockEdits[b.id];
+        }
+        documents.forEach(page=>page.result=fit(page));cacheKey=signature;selected=null;noticeText='';if(menu.open)menu.close();menu.hidden=true;
       }
       return documents;
     }
     function errors(){return ensure().flatMap(page=>page.result.issues.map(id=>`${labels[page.source.find(b=>b.id===id).key]||'Podaci'} (${page.number}. str.)`));}
     function announce(message='') {
       const problems=errors();
-      const adapted=[...new Set(documents.flatMap(p=>p.result.blocks.filter(b=>b.size<(preferences[b.key]||b.defaultSize)).map(b=>`${labels[b.key]||b.key}: ${b.size.toLocaleString('hr-HR')} pt`)))];
+      const adapted=[...new Set(documents.flatMap(p=>p.result.blocks.filter(b=>b.size<(blockEdits[b.id]?.size||preferences[b.key]||b.defaultSize)).map(b=>`${labels[b.key]||b.key}: ${b.size.toLocaleString('hr-HR')} pt`)))];
       notice.dataset.error=String(!!problems.length);
-      notice.textContent=problems.length?'Ispis je zaustavljen: cijeli sadržaj ne stane bez preklapanja. Smanjite font označenog bloka ili provjerite unos. '+[...new Set(problems)].join(', '):message || (adapted.length?'Za ovu listu prilagođeno: '+adapted.join('; ')+'. Spremljene željene veličine ostaju sačuvane.':'Kliknite tekstualni blok za promjenu veličine fonta.');
+      notice.textContent=problems.length?'Ispis je zaustavljen: cijeli sadržaj ne stane bez preklapanja. Smanjite font označenog bloka ili provjerite unos. '+[...new Set(problems)].join(', '):message || (adapted.length?'Za ovu listu prilagođeno: '+adapted.join('; ')+'. Spremljene željene veličine ostaju sačuvane.':'Kliknite tekstualni blok za uređivanje teksta i fonta.');
     }
     function paint(canvas,page,suppress=false) {
       canvas.dataset.measuredPage=String(page.number);
@@ -32610,12 +32639,23 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       ensure();screenPreviewIndex=Math.max(0,Math.min(screenPreviewIndex,documents.length-1));
       const canvas=document.createElement('canvas');canvas.width=1754;canvas.height=1241;
       paint(canvas,documents[screenPreviewIndex]);canvas.setAttribute('role','img');
-      canvas.setAttribute('aria-label',`Pregled stranice ${screenPreviewIndex+1} od ${documents.length}. Kliknite podatke za veličinu fonta.`);
+      canvas.setAttribute('aria-label',`Pregled stranice ${screenPreviewIndex+1} od ${documents.length}. Kliknite podatke za uređivanje teksta i fonta.`);
       previewStage.replaceChildren(canvas);sheetCount.textContent=`${screenPreviewIndex+1} / ${documents.length}`;
       previousSheet.disabled=screenPreviewIndex===0;nextSheet.disabled=screenPreviewIndex===documents.length-1;
       const zoom=Number(document.getElementById('wizardPreviewZoom').value);previewStage.classList.toggle('is-zoomed',zoom>0);
       canvas.style.setProperty('--review-width',(1123*zoom/100)+'px');
       drawSelection();announce(noticeText);if(!menu.hidden)position();
+      const summary=document.getElementById('wizardReadableSummary');
+      if(summary){
+        summary.querySelector('[data-edited-blocks]')?.remove();
+        const edited=documents.flatMap(p=>p.result.blocks.filter(b=>blockEdits[b.id]).map(b=>({b,page:p.number})));
+        if(edited.length){const content=wizardElement('section',{'data-edited-blocks':''});
+          content.append(wizardElement('h3',{},'Uređeni blokovi na listi'));
+          content.append(wizardElement('p',{},'Ovi tekstovi koriste se u ispisu; izvorni unosi ostaju sačuvani.'));
+          for(const {b,page} of edited){content.append(wizardElement('strong',{},`${labels[b.key]||b.key} (${page}. str.)`),wizardElement('pre',{},b.text||'(Prazan blok)'));}
+          summary.querySelector('div')?.prepend(content);
+        }
+      }
     };
     function drawSelection(){
       const canvas=previewStage.querySelector('canvas'),page=documents[screenPreviewIndex];if(!canvas||!page)return;
@@ -32625,37 +32665,46 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       }ctx.restore();
     }
     function active(){return documents[screenPreviewIndex]?.result.blocks.find(b=>b.id===selected);}
-    function position(){if(menu.hidden)return;const c=previewStage.querySelector('canvas'),b=active();if(!c||!b){hide();return;}
-      const r=c.getBoundingClientRect(), scale=r.width/1754;const anchorX=r.left+b.rect.x*scale,anchorY=r.top+(b.rect.y+b.rect.height)*scale;
-      menu.style.left=Math.max(8,Math.min(innerWidth-menu.offsetWidth-8,anchorX))+'px';
-      menu.style.top=Math.max(8,Math.min(innerHeight-menu.offsetHeight-8,anchorY+8))+'px';
+    function position(){}
+    function updateEditorFont(){editor.style.fontSize=Math.max(20,Number(input.value)*1.8)+'px';}
+    function show(block){
+      feedback.textContent='';selected=block.id;
+      const parent=fullscreenDialog.open?fullscreenDialog:document.body;if(menu.parentNode!==parent)parent.append(menu);
+      menu.hidden=false;title.textContent=labels[block.key]||block.key;
+      input.value=String(block.size);editor.value=block.text;updateEditorFont();
+      savedLabel.textContent='Uređujete ovaj blok na listi. Nakon primjene odaberite Spremi na računalo za spremanje u datoteku pacijenta.';
+      if(!menu.open)menu.showModal();refreshScreenPreview();editor.focus();
     }
-    function show(block){feedback.textContent='';selected=block.id;const parent=fullscreenDialog.open?fullscreenDialog:document.body;if(menu.parentNode!==parent)parent.append(menu);menu.hidden=false;title.textContent=labels[block.key]||block.key;input.value=String(block.size);savedLabel.textContent=preferences[block.key]?`Spremljena željena veličina: ${preferences[block.key].toLocaleString('hr-HR')} pt`:'Zadana veličina';refreshScreenPreview();position();}
-    function hide(){menu.hidden=true;selected=null;refreshScreenPreview();}
-    function persist(){try{localStorage.setItem(STORE,JSON.stringify(preferences));}catch(error){noticeText='Postavke vrijede za ovu sesiju; preglednik nije dopustio lokalno spremanje.';}}
-    function change(value,resetting=false){const b=active(),page=documents[screenPreviewIndex];if(!b)return;
-      const parsed=Number(String(value).replace(',','.'));
-      if(!resetting&&(!String(value).trim()||!Number.isFinite(parsed)||parsed<MIN||parsed>MAX)){input.value=b.size;feedback.textContent='Unesite veličinu od 8 do 40 pt.';return;}
-      const requested=resetting?b.defaultSize:Math.round(parsed*2)/2;
-      const fixed={...page.result.sizes};let result=null,applied=requested;
-      for(;applied>=MIN;applied=Math.round((applied-.5)*2)/2){const candidate=solve(page,{...fixed,[b.id]:applied});
-        if(doesNotWorsen(candidate,page.result)){result=candidate;break;}
-      }
-      if(!result){input.value=b.size;feedback.textContent='Promjena bi povećala preklapanje ili izašla izvan stranice. Odaberite manji font.';return;}
+    function hide(){menu.close();menu.hidden=true;selected=null;refreshScreenPreview();}
+    function change(value,resetting=false){const b=active();if(!b)return;
+      const parsed=resetting?b.defaultSize:Number(String(value).replace(',','.'));
+      if(!Number.isFinite(parsed)||parsed<MIN||parsed>MAX){feedback.textContent='Unesite veličinu od 8 do 40 pt.';return;}
+      input.value=String(Math.round(parsed*2)/2);updateEditorFont();feedback.textContent='Promjene će se spremiti pritiskom na Primijeni.';
+    }
+    apply.onclick=()=>{
+      const b=active(),page=documents[screenPreviewIndex];if(!b)return;
+      const requested=Number(input.value);
+      if(!Number.isFinite(requested)||requested<MIN||requested>MAX){feedback.textContent='Unesite veličinu od 8 do 40 pt.';input.focus();return;}
+      const source=page.source.find(item=>item.id===b.id);
+      source.text=editor.value.replace(/\r\n?/g,'\n');
+      const fixed={...page.result.sizes};let result,applied=Math.round(requested*2)/2;
+      for(;applied>=MIN;applied-=.5){result=solve(page,{...fixed,[b.id]:applied});if(doesNotWorsen(result,page.result)||applied===MIN)break;}
+      blockEdits[b.id]={source:source.originalText,text:source.text,size:applied};
       page.result=result;
-      if(resetting)delete preferences[b.key];else preferences[b.key]=requested;
-      noticeText=applied<requested?`Najveća veličina za ovaj blok trenutačno je ${applied.toLocaleString('hr-HR')} pt. Veći font ne stane bez preklapanja ili gubitka sadržaja.`:'';
-      persist();const id=selected;paint(els.canvas1,documents[0]);paint(els.canvas2,documents[1]);selected=id;show(active());feedback.textContent=noticeText||`Primijenjeno: ${applied.toLocaleString('hr-HR')} pt.`;
-    }
-    // Commit a complete typed value on Enter or blur; do not rewrite partial
-    // numbers (especially 8.5 / 12) or detach the focused input during typing.
+      cacheKey=JSON.stringify([getFormData(),state.calibration,state.previewListCount,state.previewTherapyCarryByPair,Object.values(state.images).map(img=>[img?.complete,img?.naturalWidth])]);
+      noticeText=applied<requested?`Tekst je spremljen. Primijenjeno ${applied.toLocaleString('hr-HR')} pt zbog raspoloživog prostora.`:'Izmjene bloka su primijenjene.';
+      markPatientSyncDirty();paint(els.canvas1,documents[0]);paint(els.canvas2,documents[1]);hide();
+    };
+    cancel.onclick=hide;menu.addEventListener('cancel',event=>{event.preventDefault();hide();});
+    restore.onclick=()=>{const b=active();if(b){editor.value=documents[screenPreviewIndex].source.find(item=>item.id===b.id).originalText;feedback.textContent='Izvorni tekst je vraćen u uređivač. Odaberite Primijeni za potvrdu.';}};
+    editor.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();apply.click();}});
+    // Font controls change the draft; Apply commits text and typography together.
     input.addEventListener('change',()=>change(input.value));
     input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();change(input.value);}});
-    minus.onclick=()=>change((active()?.size||8)-.5);plus.onclick=()=>change((active()?.size||8)+.5);reset.onclick=()=>change(null,true);close.onclick=hide;
+    minus.onclick=()=>change(Number(input.value)-.5);plus.onclick=()=>change(Number(input.value)+.5);reset.onclick=()=>change(null,true);close.onclick=hide;
     previewStage.addEventListener('click',event=>{const canvas=event.target.closest('canvas');if(!canvas)return;ensure();const r=canvas.getBoundingClientRect(),x=(event.clientX-r.left)*1754/r.width,y=(event.clientY-r.top)*1241/r.height;
       const b=documents[screenPreviewIndex]?.result.blocks.find(b=>x>=b.rect.x&&x<=b.rect.x+b.rect.width&&y>=b.rect.y&&y<=b.rect.y+b.rect.height);if(b)show(b);else hide();});
-    document.addEventListener('pointerdown',event=>{if(!menu.hidden&&!menu.contains(event.target)&&!previewStage.contains(event.target)){if(document.activeElement===input)change(input.value);hide();}},true);
-    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!menu.hidden){event.preventDefault();event.stopImmediatePropagation();hide();}if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='p'){event.preventDefault();printPages();}},true);
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!menu.hidden){event.preventDefault();event.stopImmediatePropagation();hide();}if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='p'){event.preventDefault();if(!menu.hidden){feedback.textContent='Prije ispisa odaberite Primijeni ili Odustani.';return;}printPages();}},true);
     addEventListener('resize',position);previewStage.addEventListener('scroll',position);document.getElementById('wizardPreviewZoom').addEventListener('change',position);
     // One entry point replaces the former grouped pixel controls, including inline Aa buttons.
     fontButton.replaceWith(fontButton.cloneNode(true));document.getElementById('wizardFontsButton').onclick=()=>{ensure();const b=documents[screenPreviewIndex]?.result.blocks[0];if(b)show(b);};
