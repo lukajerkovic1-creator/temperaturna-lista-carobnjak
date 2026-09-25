@@ -9943,7 +9943,7 @@ Primjer 3..."></textarea>
   // ============================================================
   // VERZIJA APLIKACIJE — jedini izvor istine
   // ============================================================
-  const APP_VERSION = '0.10.3';
+  const APP_VERSION = '0.10.4';
   const APP_BUILD_SHA = '28c562f650d3';
   const PARSER_VERSION = 'temperaturna-lista-parser-v2';
   const PARSER_PROVENANCE_SCHEMA = 'temperaturna-lista-parser-provenance-v1';
@@ -31513,7 +31513,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       return '';
     });
     initFirebasePatients();
-    els.printBtn.addEventListener('click', printPages);
+    els.printBtn.addEventListener('click', () => printPages());
     els.loadDataInput.addEventListener('change', (event) => {
       const file = event.target.files?.[0];
       if (file) loadPatientDataFromFile(file);
@@ -32003,7 +32003,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     updateTherapyReferenceTitle();
     const diagnosisHint=document.getElementById('diagnosisAutocompleteHint');
     if(diagnosisHint)document.getElementById('wizardStep2').append(diagnosisHint);
-    document.getElementById('wizardBack').addEventListener('click',()=>wizardGo(wizard.step-1));document.getElementById('wizardNext').addEventListener('click',wizardNext);document.getElementById('wizardPrint').addEventListener('click',printPages);
+    document.getElementById('wizardBack').addEventListener('click',()=>wizardGo(wizard.step-1));document.getElementById('wizardNext').addEventListener('click',wizardNext);document.getElementById('wizardPrint').addEventListener('click',()=>printPages());
     card.addEventListener('input',event=>{if(event.target.id && !['wizardSource','firstName','lastName'].includes(event.target.id)) {wizard.manual.add(event.target.id);wizardValidate();}});
     // Enter in a multiline field always inserts a newline, including when suggestions are open.
     card.addEventListener('keydown',event=>{if(event.key==='Enter' && event.target.tagName==='TEXTAREA') event.stopPropagation();},true);
@@ -32445,6 +32445,23 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     function horizontal(a,b){return a.field.x < b.field.x+b.width+GAP && b.field.x<a.field.x+a.width+GAP;}
     function solve(page,sizes) {
       const blocks=page.source.map(b=>measured(b,sizes[b.id]));
+      // These are text anchors, not clipping rectangles. In particular the old
+      // radiology height was only a placement hint, not a hard text limit.
+      // A lower-page block may use free space to its right without moving its
+      // anchor, moving another block, shrinking the grid or adding a page.
+      for(let i=0;i<blocks.length;i++){
+        const original=blocks[i];
+        if(!['vitalSignsDays','radiologyDays'].includes(original.key))continue;
+        if(original.field.y+original.height<=PAGE.heightPx-MARGIN && original.inkWidth<=original.width)continue;
+        const maxWidth=PAGE.widthPx-MARGIN-original.field.x;
+        for(let width=original.width+16;width<=maxWidth+16;width+=16){
+          const candidate=measured({...original,base:{...original.base,width:Math.min(width,maxWidth)}},original.size);
+          const rect={x:candidate.field.x,y:candidate.field.y,width:candidate.width,height:candidate.contentHeight};
+          const clashes=blocks.some((other,j)=>j!==i&&rectsOverlap(rect,{x:other.field.x,y:other.field.y,width:other.width,height:other.contentHeight}));
+          if(!clashes && candidate.field.y+candidate.height<=PAGE.heightPx-MARGIN && candidate.inkWidth<=candidate.width){blocks[i]={...candidate,base:original.base};break;}
+          if(width>=maxWidth)break;
+        }
+      }
       // Preserve the calibrated positions and the original temperature grid.
       // Font changes may wrap within a box, but must never move another field.
       const issues=new Set(), violations={};
@@ -32454,8 +32471,6 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
           violation(b.id+':header-position',Math.abs(b.field.y-b.base.y)-12,b.id);
           violation(b.id+':header-height',b.height-Math.max(b.base.height,b.defaultSize*PX_PER_PT*1.2+4),b.id);
         }
-        if(!page.supplement && !['patientHeader','dates','hospitalDays'].includes(b.key) && Number.isFinite(b.base.height))
-          violation(b.id+':box-height',b.contentHeight-b.base.height,b.id);
         violation(b.id+':left',MARGIN-b.field.x,b.id);
         violation(b.id+':right',b.field.x+b.width-(PAGE.widthPx-MARGIN),b.id);
         violation(b.id+':top',MARGIN-b.field.y,b.id);
@@ -32639,9 +32654,20 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       return documents.map(page=>{const c=document.createElement('canvas');c.width=PAGE.printWidthPx;c.height=PAGE.printHeightPx;paint(c,page,options.suppressBackground===true);c.dataset.printPageNumber=String(page.number);c.dataset.printDocumentPageCount=String(documents.length);return c;});};
     renderCanvasesForExport=exportPages;
     const oldPrint=printPages;
-    printPages=async function(options={}){await document.fonts.ready;ensure();if(errors().length){wizardGo(7);announce();return;}return oldPrint(options);};
+    printPages=async function(options={}){
+      await document.fonts.ready;ensure();
+      if(errors().length){
+        wizardGo(7);announce();
+        screenPreviewIndex=documents.findIndex(page=>page.result.issues.length);
+        const page=documents[screenPreviewIndex],block=page.result.blocks.find(b=>page.result.issues.includes(b.id));
+        show(block);feedback.textContent='Ispis nije pokrenut: ovaj tekst ne stane na stranicu ni uz dopuštenu veličinu. Provjerite označeni unos.';
+        setStatus('Ispis nije pokrenut. Označen je tekst koji izlazi izvan stranice ili se preklapa.',true);
+        return;
+      }
+      return oldPrint(options);
+    };
     const oldPrintCanvas=printCanvasPages;
-    printCanvasPages=async function(canvases,title){await document.fonts.ready;if(errors().length){announce();return;}return oldPrintCanvas(canvases,title);};
+    printCanvasPages=async function(canvases,title){await document.fonts.ready;if(errors().length){announce();throw new Error('Tekst ne stane na stranicu.');}return oldPrintCanvas(canvases,title);};
     addEventListener('beforeprint',()=>{printHost.replaceChildren();ensure();
       if(document.fonts.status!=='loaded'||errors().length){printHost.append(wizardElement('p',{},'ISPIS ZASTAVEN — cijeli sadržaj nije moguće sigurno ispisati. Vratite se u pregled aplikacije i ispravite označene blokove.'));announce();return;}
       documents.forEach(page=>{const c=document.createElement('canvas');c.width=PAGE.printWidthPx;c.height=PAGE.printHeightPx;paint(c,page);const img=document.createElement('img');img.src=c.toDataURL('image/png');img.alt='';printHost.append(img);});
@@ -32678,8 +32704,8 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     pager.append(previousSheet,sheetCount,nextSheet);display.append(pager);
     const zoomBox=wizardElement('div',{class:'review-zoom'});
     zoomBox.append(wizardElement('label',{for:'wizardPreviewZoom'},'Veličina prikaza'),zoom);
-    caption(font,'font','Veličina fonta');
-    display.append(zoomBox,font);
+    font.remove();
+    display.append(zoomBox);
     summary.querySelector('summary').textContent='Čitljiv pregled podataka';
     const info=wizardElement('section',{class:'review-information'});
     info.append(summary);
@@ -32700,7 +32726,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       const dirty=Boolean(state.patientSyncState.dirty);
       const failed=/nije pokrenut|nije spremljen|pogrešk|neuspje|grešk/i.test(message);
       // The original status remains the source of truth, including download failures.
-      statusLabel.textContent=pending?'Pripremam datoteku…':failed?message:/nespremljene|nespremljen|nije spremljen/i.test(message)||dirty?'Nespremljene promjene':/spremljen|spremljeno|preuzet/i.test(message)?'Spremljeno na računalo':'Nema nespremljenih promjena';
+      statusLabel.textContent=pending?'Pripremam datoteku…':failed?message:/nespremljene|nespremljen|nije spremljen|nije preuzet/i.test(message)||dirty?'Nespremljene promjene':/spremljen|spremljeno|preuzet/i.test(message)?'Spremljeno na računalo':'Nema nespremljenih promjena';
       status.title=message;
       status.dataset.state=failed?'error':pending?'pending':statusLabel.textContent==='Nespremljene promjene'?'dirty':'saved';
       caption(save,'save',pending?'Pripremam datoteku…':'Spremi na računalo');
