@@ -9943,7 +9943,7 @@ Primjer 3..."></textarea>
   // ============================================================
   // VERZIJA APLIKACIJE — jedini izvor istine
   // ============================================================
-  const APP_VERSION = '0.10.4';
+  const APP_VERSION = '0.10.5';
   const APP_BUILD_SHA = '28c562f650d3';
   const PARSER_VERSION = 'temperaturna-lista-parser-v2';
   const PARSER_PROVENANCE_SCHEMA = 'temperaturna-lista-parser-provenance-v1';
@@ -32432,10 +32432,11 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       @media print{@page{size:A4 landscape;margin:0}html,body{margin:0!important;padding:0!important;width:297mm!important;height:auto!important;overflow:visible!important;background:#fff!important}body>*{display:none!important}body>#measuredPrintDocument{display:block!important;position:static!important}#measuredPrintDocument img{display:block!important;width:297mm!important;height:210mm!important;break-after:page;page-break-after:always}#measuredPrintDocument img:last-child{break-after:auto;page-break-after:auto}#measuredPrintDocument p{font:16pt Arial;color:#a00000;padding:15mm}}
     `;document.head.append(css);
 
+    const inlineLabKeys=new Set(['labBox1Days','labBox2Days','labBox4Days']);
     function measured(block,size) {
       const field={...block.base,fontSize:size*PX_PER_PT,lineHeight:size*PX_PER_PT*1.2};
       // Two pixels per edge reserve highlight borders, glyph overhang and print rounding.
-      const lines=getTextBoxLines(measure,block.text,{...field,width:Math.max(1,field.width-6)},{...block.options,noWrap:false});
+      const lines=getTextBoxLines(measure,block.text,{...field,width:Math.max(1,field.width-6)},{...block.options,noWrap:inlineLabKeys.has(block.key)});
       measure.font=`${block.options.fontWeight||'bold'} ${field.fontSize}px "Times New Roman", Times, serif`;
       const metrics=lines.map(line=>measure.measureText(line));
       const width=Math.max(0,...metrics.map(m=>Math.max(m.width,m.actualBoundingBoxLeft+m.actualBoundingBoxRight)));
@@ -32445,6 +32446,16 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     function horizontal(a,b){return a.field.x < b.field.x+b.width+GAP && b.field.x<a.field.x+a.width+GAP;}
     function solve(page,sizes) {
       const blocks=page.source.map(b=>measured(b,sizes[b.id]));
+      // Keep each laboratory label and value on one line. Only neighbouring
+      // blood/coagulation columns for the same day may move horizontally.
+      const placed=[];
+      for(const b of blocks.filter(b=>inlineLabKeys.has(b.key)).sort((a,b)=>a.base.x-b.base.x||a.base.y-b.base.y)){
+        b.width=b.field.width=Math.max(b.width,Math.ceil(b.inkWidth));
+        const neighbours=placed.filter(other=>other.base.blockIndex===b.base.blockIndex &&
+          b.field.y<other.field.y+other.contentHeight && other.field.y<b.field.y+b.contentHeight);
+        b.field.x=Math.max(b.base.x,...neighbours.map(other=>other.field.x+other.width+GAP));
+        placed.push(b);
+      }
       // These are text anchors, not clipping rectangles. In particular the old
       // radiology height was only a placement hint, not a hard text limit.
       // A lower-page block may use free space to its right without moving its
@@ -32463,7 +32474,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
         }
       }
       // Preserve the calibrated positions and the original temperature grid.
-      // Font changes may wrap within a box, but must never move another field.
+      // Other than the laboratory columns above, preserve every field anchor.
       const issues=new Set(), violations={};
       function violation(key,amount,...ids){if(amount>0){violations[key]=amount;ids.forEach(id=>issues.add(id));}}
       blocks.forEach(b=>{b.rect={x:b.field.x-2,y:b.field.y-2,width:b.width+4,height:b.height+4};
