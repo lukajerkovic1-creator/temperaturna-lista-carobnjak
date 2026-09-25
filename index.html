@@ -9943,7 +9943,7 @@ Primjer 3..."></textarea>
   // ============================================================
   // VERZIJA APLIKACIJE — jedini izvor istine
   // ============================================================
-  const APP_VERSION = '0.10.1';
+  const APP_VERSION = '0.10.2';
   const APP_BUILD_SHA = '28c562f650d3';
   const PARSER_VERSION = 'temperaturna-lista-parser-v2';
   const PARSER_PROVENANCE_SCHEMA = 'temperaturna-lista-parser-provenance-v1';
@@ -32422,7 +32422,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     const reset=wizardElement('button',{type:'button'},'Zadano');
     const close=wizardElement('button',{type:'button','aria-label':'Zatvori izbornik'},'×');
     const row=wizardElement('div');row.append(minus,input,wizardElement('span',{},'pt'),plus,reset,close);
-    const savedLabel=wizardElement('small');menu.append(title,row,savedLabel,sizes);document.body.append(menu);
+    const savedLabel=wizardElement('small');const feedback=wizardElement('small',{role:'status','aria-live':'polite'});menu.append(title,row,savedLabel,feedback,sizes);document.body.append(menu);
     const printHost=wizardElement('div',{id:'measuredPrintDocument'});document.body.append(printHost);
     const css=document.createElement('style');css.textContent=`
       #printBlockMenu{position:fixed;z-index:2147483647;box-sizing:border-box;max-width:calc(100vw - 16px);padding:10px;background:#fff;color:#19364a;border:1px solid #a5bcc9;border-radius:9px;box-shadow:0 5px 22px #19364a33;font:14px Arial;}
@@ -32476,15 +32476,38 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
         }
         if(!moved)break;
       }
-      const issues=new Set();
-      if(required>160)blocks.filter(b=>(b.key==='therapy'&&b.base.y+b.height+GAP>690)||(b.sideY!==undefined&&b.sideY+b.height+GAP>690)).forEach(b=>issues.add(b.id));
-      blocks.forEach(b=>{b.rect={x:b.field.x-2,y:b.field.y-2,width:b.width+4,height:b.height+4};
-        if(['patientHeader','dates','hospitalDays'].includes(b.key) && (Math.abs(b.field.y-b.base.y)>12 || b.height>Math.max(b.base.height, b.defaultSize*PX_PER_PT*1.2+4)))issues.add(b.id);
-        if(b.field.x<MARGIN || b.field.x+b.width>PAGE.widthPx-MARGIN || b.field.y<MARGIN || b.field.y+b.height>PAGE.heightPx-MARGIN || b.inkWidth>b.width+0.1)issues.add(b.id);
+      const issues=new Set(), violations={};
+      function violation(key,amount,...ids){if(amount>0){violations[key]=amount;ids.forEach(id=>issues.add(id));}}
+      if(required>160)blocks.forEach(b=>{
+        if(b.key==='therapy')violation(b.id+':therapy',b.base.y+b.height+GAP-690,b.id);
+        if(b.sideY!==undefined)violation(b.id+':side',b.sideY+b.height+GAP-690,b.id);
       });
-      for(let i=0;i<blocks.length;i++)for(let j=i+1;j<blocks.length;j++)if(rectsOverlap(blocks[i].rect,blocks[j].rect)){issues.add(blocks[i].id);issues.add(blocks[j].id);}
-      return {blocks,issues:[...issues],sizes:{...sizes},gridShift};
+      blocks.forEach(b=>{b.rect={x:b.field.x-2,y:b.field.y-2,width:b.width+4,height:b.height+4};
+        if(['patientHeader','dates','hospitalDays'].includes(b.key)){
+          violation(b.id+':header-position',Math.abs(b.field.y-b.base.y)-12,b.id);
+          violation(b.id+':header-height',b.height-Math.max(b.base.height,b.defaultSize*PX_PER_PT*1.2+4),b.id);
+        }
+        violation(b.id+':left',MARGIN-b.field.x,b.id);
+        violation(b.id+':right',b.field.x+b.width-(PAGE.widthPx-MARGIN),b.id);
+        violation(b.id+':top',MARGIN-b.field.y,b.id);
+        violation(b.id+':bottom',b.field.y+b.height-(PAGE.heightPx-MARGIN),b.id);
+        violation(b.id+':ink',b.inkWidth-b.width-0.1,b.id);
+      });
+      for(let i=0;i<blocks.length;i++)for(let j=i+1;j<blocks.length;j++){
+        const a=blocks[i],b=blocks[j];
+        if(rectsOverlap(a.rect,b.rect))violation(a.id+':overlap:'+b.id,
+          Math.min(a.rect.x+a.rect.width,b.rect.x+b.rect.width)-Math.max(a.rect.x,b.rect.x),a.id,b.id);
+        if(rectsOverlap(a.rect,b.rect))violation(a.id+':overlap-height:'+b.id,
+          Math.min(a.rect.y+a.rect.height,b.rect.y+b.rect.height)-Math.max(a.rect.y,b.rect.y),a.id,b.id);
+      }
+      return {blocks,issues:[...issues],violations,sizes:{...sizes},gridShift};
     }
+    // An unrelated existing overflow must not lock all font controls. Accept only
+    // changes that introduce no new violation and do not worsen any existing one.
+    function doesNotWorsen(candidate,current){
+      return Object.entries(candidate.violations).every(([key,amount])=>amount<=(current.violations[key]||0)+0.001);
+    }
+
     function fit(page) {
       const sizes=Object.fromEntries(page.source.map(b=>[b.id,preferences[b.key]||b.defaultSize]));
       let result=solve(page,sizes);
@@ -32620,29 +32643,31 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       menu.style.left=Math.max(8,Math.min(innerWidth-menu.offsetWidth-8,anchorX))+'px';
       menu.style.top=Math.max(8,Math.min(innerHeight-menu.offsetHeight-8,anchorY+8))+'px';
     }
-    function show(block){selected=block.id;(fullscreenDialog.open?fullscreenDialog:document.body).append(menu);menu.hidden=false;title.textContent=labels[block.key]||block.key;input.value=String(block.size);savedLabel.textContent=preferences[block.key]?`Spremljena željena veličina: ${preferences[block.key].toLocaleString('hr-HR')} pt`:'Zadana veličina';refreshScreenPreview();position();}
+    function show(block){feedback.textContent='';selected=block.id;const parent=fullscreenDialog.open?fullscreenDialog:document.body;if(menu.parentNode!==parent)parent.append(menu);menu.hidden=false;title.textContent=labels[block.key]||block.key;input.value=String(block.size);savedLabel.textContent=preferences[block.key]?`Spremljena željena veličina: ${preferences[block.key].toLocaleString('hr-HR')} pt`:'Zadana veličina';refreshScreenPreview();position();}
     function hide(){menu.hidden=true;selected=null;refreshScreenPreview();}
     function persist(){try{localStorage.setItem(STORE,JSON.stringify(preferences));}catch(error){noticeText='Postavke vrijede za ovu sesiju; preglednik nije dopustio lokalno spremanje.';}}
     function change(value,resetting=false){const b=active(),page=documents[screenPreviewIndex];if(!b)return;
-      const requested=resetting?b.defaultSize:Math.max(MIN,Math.min(MAX,Math.round(Number(value)*2)/2));if(!Number.isFinite(requested)){input.value=b.size;return;}
+      const parsed=Number(String(value).replace(',','.'));
+      if(!resetting&&(!String(value).trim()||!Number.isFinite(parsed)||parsed<MIN||parsed>MAX)){input.value=b.size;feedback.textContent='Unesite veličinu od 8 do 40 pt.';return;}
+      const requested=resetting?b.defaultSize:Math.round(parsed*2)/2;
       const fixed={...page.result.sizes};let result=null,applied=requested;
       for(;applied>=MIN;applied=Math.round((applied-.5)*2)/2){const candidate=solve(page,{...fixed,[b.id]:applied});
-        if(!candidate.issues.length){result=candidate;break;}
+        if(doesNotWorsen(candidate,page.result)){result=candidate;break;}
       }
-      if(!result){input.value=b.size;noticeText='Promjena nije primijenjena: cijeli sadržaj ove stranice ne stane. Smanjite označene blokove ili provjerite unos.';
-        // Let the user reduce a block on an already invalid page, without increasing other fonts.
-        if(requested<b.size){result=solve(page,{...fixed,[b.id]:requested});applied=requested;}else{announce(noticeText);return;}
-      }
+      if(!result){input.value=b.size;feedback.textContent='Promjena bi povećala preklapanje ili izašla izvan stranice. Odaberite manji font.';return;}
       page.result=result;
       if(resetting)delete preferences[b.key];else preferences[b.key]=requested;
       noticeText=applied<requested?`Najveća veličina za ovaj blok trenutačno je ${applied.toLocaleString('hr-HR')} pt. Veći font ne stane bez preklapanja ili gubitka sadržaja.`:'';
-      persist();const id=selected;paint(els.canvas1,documents[0]);paint(els.canvas2,documents[1]);selected=id;show(active());
+      persist();const id=selected;paint(els.canvas1,documents[0]);paint(els.canvas2,documents[1]);selected=id;show(active());feedback.textContent=noticeText||`Primijenjeno: ${applied.toLocaleString('hr-HR')} pt.`;
     }
-    input.addEventListener('input',()=>{if(input.value!==''&&input.validity.valid)change(input.value);});
-    input.addEventListener('change',()=>{if(Number(input.value)!==active()?.size)change(input.value);});minus.onclick=()=>change((active()?.size||8)-.5);plus.onclick=()=>change((active()?.size||8)+.5);reset.onclick=()=>change(null,true);close.onclick=hide;
+    // Commit a complete typed value on Enter or blur; do not rewrite partial
+    // numbers (especially 8.5 / 12) or detach the focused input during typing.
+    input.addEventListener('change',()=>change(input.value));
+    input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();change(input.value);}});
+    minus.onclick=()=>change((active()?.size||8)-.5);plus.onclick=()=>change((active()?.size||8)+.5);reset.onclick=()=>change(null,true);close.onclick=hide;
     previewStage.addEventListener('click',event=>{const canvas=event.target.closest('canvas');if(!canvas)return;ensure();const r=canvas.getBoundingClientRect(),x=(event.clientX-r.left)*1754/r.width,y=(event.clientY-r.top)*1241/r.height;
       const b=documents[screenPreviewIndex]?.result.blocks.find(b=>x>=b.rect.x&&x<=b.rect.x+b.rect.width&&y>=b.rect.y&&y<=b.rect.y+b.rect.height);if(b)show(b);else hide();});
-    document.addEventListener('pointerdown',event=>{if(!menu.hidden&&!menu.contains(event.target)&&!previewStage.contains(event.target))hide();},true);
+    document.addEventListener('pointerdown',event=>{if(!menu.hidden&&!menu.contains(event.target)&&!previewStage.contains(event.target)){if(document.activeElement===input)change(input.value);hide();}},true);
     document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!menu.hidden){event.preventDefault();event.stopImmediatePropagation();hide();}if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='p'){event.preventDefault();printPages();}},true);
     addEventListener('resize',position);previewStage.addEventListener('scroll',position);document.getElementById('wizardPreviewZoom').addEventListener('change',position);
     // One entry point replaces the former grouped pixel controls, including inline Aa buttons.
