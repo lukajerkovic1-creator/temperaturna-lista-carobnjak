@@ -9943,7 +9943,7 @@ Primjer 3..."></textarea>
   // ============================================================
   // VERZIJA APLIKACIJE — jedini izvor istine
   // ============================================================
-  const APP_VERSION = '0.10.2';
+  const APP_VERSION = '0.10.3';
   const APP_BUILD_SHA = '28c562f650d3';
   const PARSER_VERSION = 'temperaturna-lista-parser-v2';
   const PARSER_PROVENANCE_SCHEMA = 'temperaturna-lista-parser-provenance-v1';
@@ -32440,53 +32440,22 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       const metrics=lines.map(line=>measure.measureText(line));
       const width=Math.max(0,...metrics.map(m=>Math.max(m.width,m.actualBoundingBoxLeft+m.actualBoundingBoxRight)));
       const inkHeight=Math.max(field.fontSize,...metrics.map(m=>m.actualBoundingBoxAscent+m.actualBoundingBoxDescent));
-      return {...block,field,lines,size,height:Math.max(field.lineHeight,lines.length*field.lineHeight+Math.max(0,inkHeight-field.lineHeight))+4,width:field.width,inkWidth:width+6};
+      return {...block,field,lines,size,contentHeight:Math.max(0,lines.length-1)*field.lineHeight+inkHeight,height:Math.max(field.lineHeight,lines.length*field.lineHeight+Math.max(0,inkHeight-field.lineHeight))+4,width:field.width,inkWidth:width+6};
     }
     function horizontal(a,b){return a.field.x < b.field.x+b.width+GAP && b.field.x<a.field.x+a.width+GAP;}
     function solve(page,sizes) {
       const blocks=page.source.map(b=>measured(b,sizes[b.id]));
-      // Reserve a usable thermal grid (at least 366 of its original 526 pixels).
-      // Insert blank space in the therapy row and remap the grid and every data origin
-      // together. Date columns and the lower vital-sign rows keep their coordinates.
-      const sideKeys=['allergiesBox','patientOriginBox','diagnosis','ohbpTherapyBox'];
-      const side=page.supplement?[]:blocks.filter(b=>sideKeys.includes(b.key)&&b.base.x<360).sort((a,b)=>a.base.y-b.base.y);
-      let sideBottom=338;
-      side.forEach(b=>{if(sideBottom<454&&sideBottom+b.height>416)sideBottom=454;b.sideY=sideBottom;sideBottom+=b.height+GAP;});
-      const required=page.supplement?0:Math.max(0,sideBottom-524,...blocks.filter(b=>b.key==='therapy').map(b=>b.base.y+b.height+GAP-524));
-      const gridShift=Math.min(160,required);
-      const mapY=y=>y<=524?y:y<584?y+gridShift:y<1110?584+gridShift+(y-584)*(526-gridShift)/526:y;
-      blocks.forEach(b=>{b.layoutY=b.sideY??mapY(b.base.y);});
-      // Keep every original column (and therefore date association). Grow boxes vertically;
-      // push only intersecting columns. Compact excessive legacy gaps if bottom space is needed.
-      const order=[...blocks].sort((a,b)=>a.layoutY-b.layoutY||a.base.x-b.base.x);
-      const predecessors=new Map();
-      order.forEach((block,index)=>{
-        const earlier=order.slice(0,index).filter(other=>horizontal(block,other));predecessors.set(block,earlier);
-        block.field.y=Math.max(block.layoutY,...earlier.map(other=>other.field.y+other.height+GAP));
-      });
-      // Move overflowing chains upward into existing whitespace, preserving order and columns.
-      for(let pass=0;pass<order.length;pass++) {
-        let moved=false;
-        for(let i=order.length-1;i>=0;i--){const b=order[i];
-          const successors=order.slice(i+1).filter(other=>horizontal(b,other));
-          const bottom=Math.min(PAGE.heightPx-MARGIN,...successors.map(other=>other.field.y-GAP));
-          const floor=Math.max(b.base.y<300?MARGIN:Math.min(b.layoutY,b.sideY!==undefined?b.sideY:b.key==='therapy'?340:584+gridShift),...predecessors.get(b).map(other=>other.field.y+other.height+GAP));
-          const y=Math.max(floor,Math.min(b.field.y,bottom-b.height));
-          if(y<b.field.y){b.field.y=y;moved=true;}
-        }
-        if(!moved)break;
-      }
+      // Preserve the calibrated positions and the original temperature grid.
+      // Font changes may wrap within a box, but must never move another field.
       const issues=new Set(), violations={};
       function violation(key,amount,...ids){if(amount>0){violations[key]=amount;ids.forEach(id=>issues.add(id));}}
-      if(required>160)blocks.forEach(b=>{
-        if(b.key==='therapy')violation(b.id+':therapy',b.base.y+b.height+GAP-690,b.id);
-        if(b.sideY!==undefined)violation(b.id+':side',b.sideY+b.height+GAP-690,b.id);
-      });
       blocks.forEach(b=>{b.rect={x:b.field.x-2,y:b.field.y-2,width:b.width+4,height:b.height+4};
         if(['patientHeader','dates','hospitalDays'].includes(b.key)){
           violation(b.id+':header-position',Math.abs(b.field.y-b.base.y)-12,b.id);
           violation(b.id+':header-height',b.height-Math.max(b.base.height,b.defaultSize*PX_PER_PT*1.2+4),b.id);
         }
+        if(!page.supplement && !['patientHeader','dates','hospitalDays'].includes(b.key) && Number.isFinite(b.base.height))
+          violation(b.id+':box-height',b.contentHeight-b.base.height,b.id);
         violation(b.id+':left',MARGIN-b.field.x,b.id);
         violation(b.id+':right',b.field.x+b.width-(PAGE.widthPx-MARGIN),b.id);
         violation(b.id+':top',MARGIN-b.field.y,b.id);
@@ -32495,12 +32464,14 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       });
       for(let i=0;i<blocks.length;i++)for(let j=i+1;j<blocks.length;j++){
         const a=blocks[i],b=blocks[j];
-        if(rectsOverlap(a.rect,b.rect))violation(a.id+':overlap:'+b.id,
-          Math.min(a.rect.x+a.rect.width,b.rect.x+b.rect.width)-Math.max(a.rect.x,b.rect.x),a.id,b.id);
-        if(rectsOverlap(a.rect,b.rect))violation(a.id+':overlap-height:'+b.id,
-          Math.min(a.rect.y+a.rect.height,b.rect.y+b.rect.height)-Math.max(a.rect.y,b.rect.y),a.id,b.id);
+        const ar={x:a.field.x,y:a.field.y,width:a.width,height:a.contentHeight};
+        const br={x:b.field.x,y:b.field.y,width:b.width,height:b.contentHeight};
+        if(rectsOverlap(ar,br))violation(a.id+':overlap:'+b.id,
+          Math.min(ar.x+ar.width,br.x+br.width)-Math.max(ar.x,br.x),a.id,b.id);
+        if(rectsOverlap(ar,br))violation(a.id+':overlap-height:'+b.id,
+          Math.min(ar.y+ar.height,br.y+br.height)-Math.max(ar.y,br.y),a.id,b.id);
       }
-      return {blocks,issues:[...issues],violations,sizes:{...sizes},gridShift};
+      return {blocks,issues:[...issues],violations,sizes:{...sizes},gridShift:0};
     }
     // An unrelated existing overflow must not lock all font controls. Accept only
     // changes that introduce no new violation and do not worsen any existing one.
@@ -32511,10 +32482,9 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     function fit(page) {
       const sizes=Object.fromEntries(page.source.map(b=>[b.id,preferences[b.key]||b.defaultSize]));
       let result=solve(page,sizes);
-      // Only reduce a failing block or its spatial predecessors; never overwrite preferences.
+      // Only reduce failing blocks; unrelated fixed boxes must keep their font sizes.
       for(let count=0;result.issues.length && count<page.source.length*65;count++) {
-        const failed=result.blocks.filter(b=>result.issues.includes(b.id));
-        const candidates=result.blocks.filter(b=>sizes[b.id]>MIN && failed.some(f=>horizontal(b,f)&&b.base.y<=f.base.y));
+        const candidates=result.blocks.filter(b=>sizes[b.id]>MIN && result.issues.includes(b.id));
         if(!candidates.length)break;
         candidates.sort((a,b)=>sizes[b.id]-sizes[a.id]||b.height-a.height);
         sizes[candidates[0].id]=Math.max(MIN,Math.round((sizes[candidates[0].id]-.5)*2)/2);
@@ -32599,16 +32569,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       ctx.save();ctx.scale(canvas.width/PAGE.widthPx,canvas.height/PAGE.heightPx);
       ctx.fillStyle='#fff';ctx.fillRect(0,0,PAGE.widthPx,PAGE.heightPx);
       if(!suppress){
-        const shift=page.result.gridShift;
-        if(!shift)ctx.drawImage(page.background,0,0);
-        else {
-          const bg=page.background,w=PAGE.widthPx;
-          ctx.drawImage(bg,0,0,w,524,0,0,w,524);
-          ctx.drawImage(bg,0,510,w,1,0,524,w,shift);
-          ctx.drawImage(bg,0,524,w,60,0,524+shift,w,60);
-          ctx.drawImage(bg,0,584,w,526,0,584+shift,w,526-shift);
-          ctx.drawImage(bg,0,1110,w,131,0,1110,w,131);
-        }
+        ctx.drawImage(page.background,0,0);
       }
       for(const marker of page.markers||[])drawAdmissionMarker(ctx,marker.layout,marker.dayIndex);
       for(const b of page.result.blocks)nativeDraw(ctx,b.lines.join('\n'),{...b.field,height:b.height},{...b.options,noWrap:true});
