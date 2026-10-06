@@ -9943,8 +9943,8 @@ Primjer 3..."></textarea>
   // ============================================================
   // VERZIJA APLIKACIJE — jedini izvor istine
   // ============================================================
-  const APP_VERSION = '0.10.9';
-  const APP_BUILD_SHA = '1cecc81ed387';
+  const APP_VERSION = '0.10.10';
+  const APP_BUILD_SHA = 'c24d1cc23303';
   const PARSER_VERSION = 'temperaturna-lista-parser-v2';
   const PARSER_PROVENANCE_SCHEMA = 'temperaturna-lista-parser-provenance-v1';
   window.__TEMPERATURNA_LISTA_BUILD_SHA__ = APP_BUILD_SHA;
@@ -32622,7 +32622,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       notice.dataset.error=String(!!problems.length);
       notice.textContent=problems.length?'Ispis je zaustavljen: za označene blokove nema dovoljno slobodnog prostora bez preklapanja. Font je sačuvan. Provjerite označeni sadržaj. '+[...new Set(problems)].join(', '):message || (moved.length?'Blokovi su pomaknuti radi izbjegavanja preklapanja: '+moved.join(', ')+'. Veličine fonta su sačuvane.':'Kliknite tekstualni blok za uređivanje teksta i fonta.');
     }
-    function paint(canvas,page,suppress=false) {
+    function paint(canvas,page,suppress=false,showLabHighlights=false) {
       canvas.dataset.measuredPage=String(page.number);
       const ctx=canvas.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
       ctx.save();ctx.scale(canvas.width/PAGE.widthPx,canvas.height/PAGE.heightPx);
@@ -32631,18 +32631,22 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
         ctx.drawImage(page.background,0,0);
       }
       for(const marker of page.markers||[])drawAdmissionMarker(ctx,marker.layout,marker.dayIndex);
-      for(const b of page.result.blocks)nativeDraw(ctx,b.lines.join('\n'),{...b.field,height:b.height},{...b.options,noWrap:true});
+      for(const b of page.result.blocks){
+        const options={...b.options,noWrap:true};
+        if(!showLabHighlights){delete options.highlightPredicate;delete options.highlightFill;}
+        nativeDraw(ctx,b.lines.join('\n'),{...b.field,height:b.height},options);
+      }
       ctx.restore();
     }
-    renderPageToCanvas=function(canvas,layoutKey,model,pageNumber,options={}){paint(canvas,ensure()[(model.previewPages?.[pageNumber-1]?.pageNumber||pageNumber)-1],options.suppressBackground===true);};
-    wizardSupplementCanvases=function(){return ensure().slice(2).map(page=>{const c=document.createElement('canvas');c.width=1754;c.height=1241;paint(c,page);return c;});};
+    renderPageToCanvas=function(canvas,layoutKey,model,pageNumber,options={}){paint(canvas,ensure()[(model.previewPages?.[pageNumber-1]?.pageNumber||pageNumber)-1],options.suppressBackground===true,options.showLabHighlights===true);};
+    wizardSupplementCanvases=function(){return ensure().slice(2).map(page=>{const c=document.createElement('canvas');c.width=1754;c.height=1241;paint(c,page,false,true);return c;});};
     // These legacy warnings use different dimensions and offered truncation overrides.
     collectTextOverflowWarnings=function(){return errors();};
     getPrintOverrideWarnings=function(){return getClinicalPrintPrerequisiteIssues();};
     refreshScreenPreview=function(){
       ensure();screenPreviewIndex=Math.max(0,Math.min(screenPreviewIndex,documents.length-1));
       const canvas=document.createElement('canvas');canvas.width=1754;canvas.height=1241;
-      paint(canvas,documents[screenPreviewIndex]);canvas.setAttribute('role','img');
+      paint(canvas,documents[screenPreviewIndex],false,true);canvas.setAttribute('role','img');
       canvas.setAttribute('aria-label',`Pregled stranice ${screenPreviewIndex+1} od ${documents.length}. Kliknite podatke za uređivanje teksta i fonta.`);
       previewStage.replaceChildren(canvas);sheetCount.textContent=`${screenPreviewIndex+1} / ${documents.length}`;
       previousSheet.disabled=screenPreviewIndex===0;nextSheet.disabled=screenPreviewIndex===documents.length-1;
@@ -32697,7 +32701,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       page.result=result;
       cacheKey=JSON.stringify([getFormData(),state.calibration,state.previewListCount,state.previewTherapyCarryByPair,Object.values(state.images).map(img=>[img?.complete,img?.naturalWidth])]);
       noticeText='Izmjene su primijenjene. Odabrani font je sačuvan; raspored blokova je ponovno izračunat.';
-      markPatientSyncDirty();paint(els.canvas1,documents[0]);paint(els.canvas2,documents[1]);hide();
+      markPatientSyncDirty();paint(els.canvas1,documents[0],false,true);paint(els.canvas2,documents[1],false,true);hide();
     };
     cancel.onclick=hide;menu.addEventListener('cancel',event=>{event.preventDefault();hide();});
     restore.onclick=()=>{const b=active();if(b){editor.value=documents[screenPreviewIndex].source.find(item=>item.id===b.id).originalText;feedback.textContent='Izvorni tekst je vraćen u uređivač. Odaberite Primijeni za potvrdu.';}};
