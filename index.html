@@ -6108,7 +6108,7 @@ body{background:radial-gradient(ellipse at 12% 0%,#dceaf4,transparent 55%),#edf2
                 <button class="small-field-action field-edit-toggle" type="button" data-collapsible-edit-target="vitalSigns" aria-controls="vitalSigns">Uredi</button>
               </div>
             </div>
-            <textarea id="vitalSigns" class="display-controlled-field collapsible-body" spellcheck="false" placeholder="Automatski iz OHBP-a; format: 140/70&#10;86/min&#10;94% (bez kisika ili uz kisik 2 L/min)" aria-disabled="false"></textarea>
+            <textarea id="vitalSigns" class="display-controlled-field collapsible-body" spellcheck="false" placeholder="Automatski iz OHBP-a; format: 140/70&#10;86/min&#10;94%" aria-disabled="false"></textarea>
           </div>
 
           <div class="collapsible-field compact-conditional-field is-collapsed" data-collapsible-field="followUpControl">
@@ -9943,8 +9943,8 @@ Primjer 3..."></textarea>
   // ============================================================
   // VERZIJA APLIKACIJE — jedini izvor istine
   // ============================================================
-  const APP_VERSION = '0.10.6';
-  const APP_BUILD_SHA = '28c562f650d3';
+  const APP_VERSION = '0.10.9';
+  const APP_BUILD_SHA = '1cecc81ed387';
   const PARSER_VERSION = 'temperaturna-lista-parser-v2';
   const PARSER_PROVENANCE_SCHEMA = 'temperaturna-lista-parser-provenance-v1';
   window.__TEMPERATURNA_LISTA_BUILD_SHA__ = APP_BUILD_SHA;
@@ -17484,7 +17484,7 @@ const THERAPY_REQUIRED_PATTERNS = Object.freeze({
       therapyEntriesMigrationVersion: 2,
       therapyEntriesLegacyBackup: therapyLegacyBackup,
       ohbpTherapy: normalizeClinicalTherapyText(els.ohbpTherapy.value),
-      vitalSigns: normalizeLineBreaks(els.vitalSigns?.value || ''),
+      vitalSigns: extractVitalSignsFromSegment(els.vitalSigns?.value || '') || '',
       followUpControlDate: normalizeAdmissionDateInput(els.followUpControlDate?.value || ''),
       followUpControl: normalizeLineBreaks(els.followUpControl?.value || ''),
       microHemocultures: Boolean(els.microHemocultures?.checked),
@@ -17592,7 +17592,7 @@ const THERAPY_REQUIRED_PATTERNS = Object.freeze({
     els.therapy.value = normalizeClinicalTherapyText(structuredTherapyText || data.therapy || '');
     if (typeof clearTherapyEntryEditor === 'function') clearTherapyEntryEditor({ focus: false });
     els.ohbpTherapy.value = normalizeClinicalTherapyText(data.ohbpTherapy || '');
-    if (els.vitalSigns) els.vitalSigns.value = data.vitalSigns || '';
+    if (els.vitalSigns) els.vitalSigns.value = extractVitalSignsFromSegment(data.vitalSigns) || '';
     if (els.followUpControlDate) els.followUpControlDate.value = formatIsoDateToCroatian(data.followUpControlDate || '');
     if (els.followUpControl) els.followUpControl.value = data.followUpControl || '';
     syncFollowUpControlLabPickerFromText();
@@ -21464,29 +21464,26 @@ function normalizeOhbpFusedSectionLabels(value) {
     if (!source) return null;
 
     const rrMatch = source.match(/\bRR\s*[:=]?\s*(\d{2,3})\s*[/\\]\s*(\d{2,3})\s*(?:mm\s*Hg|mmHg)?/i)
-      || source.match(/\b(?:krvni\s+tlak|tlak|TA)\s*[:=]?\s*(\d{2,3})\s*[/\\]\s*(\d{2,3})\s*(?:mm\s*Hg|mmHg)?/i);
+      || source.match(/\b(?:krvni\s+tlak|tlak|TA)\s*[:=]?\s*(\d{2,3})\s*[/\\]\s*(\d{2,3})\s*(?:mm\s*Hg|mmHg)?/i)
+      || String(segment || '').match(/^\s*(\d{2,3})\s*\/\s*(\d{2,3})\s*(?:mm\s*Hg)?\s*$/im);
 
     const pulseMatch = source.match(/\bPuls\s*[:=]?\s*(\d{2,3})\s*(?:\.\s*)?(?:\/\s*min|u\s*min|\/min\.|min\b)?/i)
       || source.match(/\bp\s*[:=]\s*(\d{2,3})\s*(?:\/\s*min|u\s*min|\/min\.|min\b)?/i)
-      || source.match(/\b(?:cp|c\.p\.|sf)\s*[:=]?\s*(\d{2,3})\s*(?:\/\s*min|u\s*min|\/min\.|min\b)?/i)
-      || source.match(/\b(?:sr[čc]ana\s+)?frekv(?:encija|\.)?\s*(?:srca)?\s*[:=]?\s*(\d{2,3})\s*(?:\/\s*min|u\s*min|\/min\.|min\b)/i);
-
-    const respiratoryRateMatch = source.match(/\b(?:Respirac\.?|resp\.?|disanje|frekv\.?\s*disanja|frekvencija\s*disanja|RRf)\s*[:=]?\s*(\d{1,3})\s*(?:\/\s*min|u\s*min|\/min\.|min\b)?/i);
+      || source.match(/\b(?:c\s*\/\s*p|cp|c\.p\.|HR|sf)\s*[:=]?\s*(\d{2,3})\s*(?:\/\s*min|u\s*min|\/min\.|min\b)?/i)
+      || source.match(/\b(?:sr[čc]ana\s+)?frekv(?:encija|\.)?\s*(?:srca)?\s*[:=]?\s*(\d{2,3})\s*(?:\/\s*min|u\s*min|\/min\.|min\b)/i)
+      || String(segment || '').match(/^\s*(\d{2,3})\s*\/\s*min\.?\s*$/im);
 
     const spo2Match = source.match(/\bSpO\s*2\s*[:=]?\s*(\d{2,3})\s*%?/i)
       || source.match(/\bSpO₂\s*[:=]?\s*(\d{2,3})\s*%?/i)
-      || source.match(/\b(?:saturacija|sat\.?\s*O\s*2|sat\.?\s*O₂)\s*[:=]?\s*(\d{2,3})\s*%?/i);
+      || source.match(/\b(?:SaO\s*[2₂]|saturacija|sat\.?\s*O\s*2|sat\.?\s*O₂)\s*[:=]?\s*(\d{2,3})\s*%?/i)
+      || String(segment || '').match(/^\s*(\d{2,3})\s*%\s*$/im);
 
-    if (!rrMatch && !pulseMatch && !respiratoryRateMatch && !spo2Match) return null;
+    if (!rrMatch && !pulseMatch && !spo2Match) return null;
 
     const lines = [];
     if (rrMatch) lines.push(`${rrMatch[1]}/${rrMatch[2]}`);
     if (pulseMatch) lines.push(`${pulseMatch[1]}/min`);
-    if (respiratoryRateMatch) lines.push(`${respiratoryRateMatch[1]}/min`);
-    if (spo2Match) {
-      const context = extractOxygenContextFromSegment(source, spo2Match.index ?? -1);
-      lines.push(`${spo2Match[1]}%${context ? ` (${context})` : ''}`);
-    }
+    if (spo2Match) lines.push(`${spo2Match[1]}%`);
     return lines.length ? lines.join('\n') : null;
   }
 
@@ -21516,7 +21513,7 @@ function normalizeOhbpFusedSectionLabels(value) {
         const hasPulse = /\b(?:Puls|cp|c\.p\.|sf)\s*[:=]?\s*\d{2,3}\b/i.test(line);
         const hasRespiratoryRate = /\b(?:Respirac\.?|resp\.?|disanje|frekv\.?\s*disanja|RRf)\s*[:=]?\s*\d{1,3}\b/i.test(line);
         const hasSpo2 = /\b(?:SpO\s*2|saturacija|sat\.?\s*O\s*2)\s*[:=]?\s*\d{2,3}\s*%?/i.test(line);
-        return (hasBloodPressure && (hasPulse || hasRespiratoryRate || hasSpo2)) || (hasSpo2 && (hasPulse || hasRespiratoryRate));
+        return hasBloodPressure || hasPulse || hasSpo2;
       });
     for (const line of vitalLineCandidates) {
       const vitalSigns = extractVitalSignsFromSegment(line);
@@ -24384,7 +24381,7 @@ function normalizeOhbpFusedSectionLabels(value) {
       ) + MICROBIOLOGY_AFTER_URINE_GAP
     );
     const occupiedRects = getMicrobiologyAvoidanceRects(ctx, layout, model, dynamicLabYOffset);
-    const microbiologyRenderOptions = { noWrap: true, fontWeight: MICROBIOLOGY_FONT_WEIGHT };
+    const microbiologyRenderOptions = { noWrap: true, fontWeight: MICROBIOLOGY_FONT_WEIGHT, blockKey:'microbiology' };
     const fields = [];
     const pushMicrobiologyField = (text, lineCount, width, x = baseX, y = nextY) => {
       const baseField = makeMicrobiologyField(x, y, width, lineCount);
@@ -24445,9 +24442,9 @@ function normalizeOhbpFusedSectionLabels(value) {
   function drawMicrobiologySamples(ctx, layoutKey, layout, model, dynamicLabYOffset = 0) {
     if (!hasSelectedMicrobiologySamples(model?.microbiologySamples || {})) return;
     const hemocultureField = resolveMicrobiologyHemocultureField(ctx, layoutKey, layout, model, dynamicLabYOffset);
-    if (hemocultureField) drawTextBox(ctx, 'HKx2', hemocultureField, { noWrap: true, fontWeight: MICROBIOLOGY_FONT_WEIGHT });
+    if (hemocultureField) drawTextBox(ctx, 'HKx2', hemocultureField, { noWrap: true, fontWeight: MICROBIOLOGY_FONT_WEIGHT, blockKey:'microbiology' });
     resolveMicrobiologyUrineFields(ctx, layout, model, dynamicLabYOffset)
-      .forEach((item) => drawTextBox(ctx, item.text, item.field, { noWrap: true, fontWeight: MICROBIOLOGY_FONT_WEIGHT }));
+      .forEach((item) => drawTextBox(ctx, item.text, item.field, { noWrap: true, fontWeight: MICROBIOLOGY_FONT_WEIGHT, blockKey:'microbiology' }));
   }
 
   function resolveRadiologyField(ctx, layout, model, dayIndex, dynamicLabYOffset = 0) {
@@ -24933,14 +24930,14 @@ ${ohbpTherapyPreviewText}`, resolvedOhbpTherapyField, { noWrap: false });
         if (renderedLabText && field) {
           // Laboratoriji se automatski spuštaju ako duga kronična terapija prelazi u njihov prostor.
           // Urin ostaje kontinuirani niz, ali se omata unutar širine text boxa.
-          drawTextBox(ctx, renderedLabText, field, getLabPreviewRenderOptions(i, renderOptions.showLabHighlights));
+          drawTextBox(ctx, renderedLabText, field, {...getLabPreviewRenderOptions(i, renderOptions.showLabHighlights),blockKey:labRoots[i]});
         }
       });
     }
     if (renderOptions.showRadiology && isAdmissionPage && model.admissionDayIndex != null && model.radiologyText) {
       const dynamicLabYOffset = getDynamicLabYOffset(ctx, layout, model);
       const field = resolveRadiologyField(ctx, layout, model, model.admissionDayIndex, dynamicLabYOffset);
-      drawTextBox(ctx, model.radiologyText, field, { noWrap: false });
+      drawTextBox(ctx, model.radiologyText, field, { noWrap: false, blockKey:'radiologyDays' });
     }
     if (isAdmissionPage && model.admissionDayIndex != null && hasSelectedMicrobiologySamples(model.microbiologySamples)) {
       const dynamicLabYOffset = getDynamicLabYOffset(ctx, layout, model);
@@ -24949,7 +24946,7 @@ ${ohbpTherapyPreviewText}`, resolvedOhbpTherapyField, { noWrap: false });
     if (renderOptions.showVitalSigns && isAdmissionPage && model.admissionDayIndex != null && model.vitalSigns) {
       const dynamicLabYOffset = getDynamicLabYOffset(ctx, layout, model);
       const field = resolveVitalSignsField(ctx, layout, model, dynamicLabYOffset);
-      drawTextBox(ctx, model.vitalSigns, field, { noWrap: false });
+      drawTextBox(ctx, model.vitalSigns, field, { noWrap: false, blockKey:'vitalSignsDays' });
     }
     if (renderOptions.showFollowUpControl) {
       drawFollowUpControlLabBoxes(ctx, layout, model, pageNumber, renderOptions);
@@ -31692,7 +31689,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
   const originalDeriveDocumentModel = deriveDocumentModel;
   deriveDocumentModel = function (data) {
     const model = originalDeriveDocumentModel(data);
-    model.vitalSigns = String(data.vitalSigns || '');
+    model.vitalSigns = extractVitalSignsFromSegment(data.vitalSigns) || '';
     ['showOhbpTherapyOnList','showLabsOnList','showRadiologyOnList'].forEach(key => model.displaySettings[key] = data[key] !== false);
     return model;
   };
@@ -31803,9 +31800,8 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       for (const key of ['ohbpTherapy','vitalSigns','labRaw','radiologyRaw']) if (!parsed[key] && fallback[key]) parsed[key] = fallback[key];
       const radiologyBlocks = source.match(/(?:^|\n)[ \t]*(?:(?:\d{1,2}\.\d{1,2}\.\d{4}\.?)\s+)?(?:RTG|UZV|CT|MR)\b[^\n]*(?:\n(?![ \t]*(?:(?:RTG|UZV|CT|MR)\b|Kontrola\b|Dg\b|Dijagnoz|Terapija\b|Th\b|Laborator|Status\b|Alergij))[^\n]*)*/gi);
       if (radiologyBlocks?.length) parsed.radiologyRaw = radiologyBlocks.map(block=>block.trim()).join('\n\n');
-      // Preserve complete source lines for repeated measurements, temperature and oxygen context.
-      const vitalLines = source.split('\n').filter(line => line.length < 1200 && /(?:\b(?:RR|TA|tlak)\s*[:=]?\s*\d{2,3}\s*\/\s*\d{2,3}|\b(?:puls|SpO\s*[₂2]|saturacija|temperatura|frekvencija disanja|respiracije|kisik)\s*[:=]?\s*\d|\b(?:TT?|temp\.?)\s*[:=]?\s*\d{2}[.,]\d|\b(?:na sobnom zraku|bez kisika|uz kisik)\b)/i.test(line));
-      if (vitalLines.length) parsed.vitalSigns = vitalLines.join('\n');
+      // Only BP, pulse and SpO2 belong in the three-line printed vital block.
+      parsed.vitalSigns = extractOhbpVitalSigns(source) || extractVitalSignsFromSegment(parsed.vitalSigns) || '';
       const control = extractAmbulatoryControlPlan(source,parsed.admissionDate || '') || extractAmbulatoryFollowUpControl(source,parsed.admissionDate || '');
       if (control) { parsed.followUpControl = control.text || ''; parsed.followUpControlDate = control.date || ''; }
       const current = getFormData(); const updates = {};
@@ -32394,7 +32390,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     const PX_PER_PT = PAGE.widthPx / (297 / 25.4 * 72);
     const MIN = 8, MAX = 40, GAP = 5, MARGIN = 18;
     const labels = Object.fromEntries(fontSections.map(([key,label])=>[key,label]));
-    Object.assign(labels,{microbiology:'Mikrobiologija',supplementIdentity:'Identifikacija na nastavnoj stranici'});
+    Object.assign(labels,{unclassified:'Podaci',microbiology:'Mikrobiologija',supplementIdentity:'Identifikacija na nastavnoj stranici'});
     let preferences = {};
     try { const saved=JSON.parse(localStorage.getItem(STORE)||'{}');
       for(const [key,size] of Object.entries(saved)) if(/^[a-zA-Z0-9]+$/.test(key) && Number.isFinite(size) && size>=MIN && size<=MAX) preferences[key]=size;
@@ -32479,25 +32475,48 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
         b.field.x=Math.max(b.base.x,...neighbours.map(other=>other.field.x+other.width+GAP));
         placed.push(b);
       }
-      // These are text anchors, not clipping rectangles. In particular the old
-      // radiology height was only a placement hint, not a hard text limit.
-      // A lower-page block may use free space to its right without moving its
-      // anchor, moving another block, shrinking the grid or adding a page.
-      for(let i=0;i<blocks.length;i++){
-        const original=blocks[i];
-        if(!['vitalSignsDays','radiologyDays'].includes(original.key))continue;
-        if(original.field.y+original.height<=PAGE.heightPx-MARGIN && original.inkWidth<=original.width)continue;
-        const maxWidth=PAGE.widthPx-MARGIN-original.field.x;
-        for(let width=original.width+16;width<=maxWidth+16;width+=16){
-          const candidate=measured({...original,base:{...original.base,width:Math.min(width,maxWidth)}},original.size);
-          const rect={x:candidate.field.x,y:candidate.field.y,width:candidate.width,height:candidate.contentHeight};
-          const clashes=blocks.some((other,j)=>j!==i&&rectsOverlap(rect,{x:other.field.x,y:other.field.y,width:other.width,height:other.contentHeight}));
-          if(!clashes && candidate.field.y+candidate.height<=PAGE.heightPx-MARGIN && candidate.inkWidth<=candidate.width){blocks[i]={...candidate,base:original.base};break;}
-          if(width>=maxWidth)break;
+      // Resolve collisions by moving content, never by reducing its font.
+      // Header and template labels retain their anchors; clinical blocks are
+      // placed in reading order against the final positions of earlier blocks.
+      const fixedKeys=new Set(['patientHeader','dates','hospitalDays','diagnosis','allergiesBox','patientOriginBox','supplementIdentity']);
+      const occupied=blocks.filter(b=>fixedKeys.has(b.key));
+      const movable=blocks.map((b,index)=>({b,index})).filter(({b})=>!fixedKeys.has(b.key))
+        .sort((a,b)=>a.b.field.y-b.b.field.y || a.b.field.x-b.b.field.x || a.index-b.index);
+      for(const {b:original,index} of movable){
+        function fits(candidate){
+          if(candidate.field.x<MARGIN || candidate.field.y<MARGIN ||
+            candidate.field.x+candidate.width>PAGE.widthPx-MARGIN ||
+            candidate.field.y+candidate.height>PAGE.heightPx-MARGIN || candidate.inkWidth>candidate.width)return false;
+          const rect={x:candidate.field.x-GAP,y:candidate.field.y-GAP,width:candidate.width+GAP*2,height:candidate.height+GAP*2};
+          return !occupied.some(other=>rectsOverlap(rect,{x:other.field.x,y:other.field.y,width:other.width,height:other.height}));
         }
+        let replacement=fits(original)?original:null;
+        if(!replacement){
+          const ys=[original.field.y,...occupied.map(b=>Math.ceil(b.field.y+b.height+GAP))]
+            .filter(y=>y>=original.field.y && y<PAGE.heightPx-MARGIN);
+          // Prefer keeping the day column. A neighbouring free area is the
+          // fallback when the vertical space in that column is exhausted.
+          const xs=[original.field.x,...occupied.map(b=>Math.ceil(b.field.x+b.width+GAP))]
+            .filter(x=>x>=original.field.x && x<PAGE.widthPx-MARGIN);
+          for(const x of [...new Set(xs)].sort((a,b)=>a-b)){
+            const maxWidth=PAGE.widthPx-MARGIN-x;
+            const widths=[original.width];
+            if(['vitalSignsDays','radiologyDays','labBox3Days','microbiology','therapy','ohbpTherapyBox','followUpControlDays'].includes(original.key)){
+              widths.push(...occupied.map(b=>b.field.x-GAP-x).filter(w=>w>original.width),maxWidth);
+            }
+            for(const y of [...new Set(ys)].sort((a,b)=>a-b)){
+              for(const width of [...new Set(widths)].filter(w=>w>0&&w<=maxWidth).sort((a,b)=>a-b)){
+                const candidate=measured({...original,base:{...original.base,x,y,width}},original.size);
+                if(fits(candidate)){replacement={...candidate,base:original.base};break;}
+              }
+              if(replacement)break;
+            }
+            if(replacement)break;
+          }
+        }
+        blocks[index]=replacement||original;
+        occupied.push(blocks[index]);
       }
-      // Preserve the calibrated positions and the original temperature grid.
-      // Other than the laboratory columns above, preserve every field anchor.
       const issues=new Set(), violations={};
       function violation(key,amount,...ids){if(amount>0){violations[key]=amount;ids.forEach(id=>issues.add(id));}}
       blocks.forEach(b=>{b.rect={x:b.field.x-2,y:b.field.y-2,width:b.width+4,height:b.height+4};
@@ -32522,24 +32541,9 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       }
       return {blocks,issues:[...issues],violations,sizes:{...sizes},gridShift:0};
     }
-    // An unrelated existing overflow must not lock all font controls. Accept only
-    // changes that introduce no new violation and do not worsen any existing one.
-    function doesNotWorsen(candidate,current){
-      return Object.entries(candidate.violations).every(([key,amount])=>amount<=(current.violations[key]||0)+0.001);
-    }
-
     function fit(page) {
       const sizes=Object.fromEntries(page.source.map(b=>[b.id,blockEdits[b.id]?.size||preferences[b.key]||b.defaultSize]));
-      let result=solve(page,sizes);
-      // Only reduce failing blocks; unrelated fixed boxes must keep their font sizes.
-      for(let count=0;result.issues.length && count<page.source.length*65;count++) {
-        const candidates=result.blocks.filter(b=>sizes[b.id]>MIN && result.issues.includes(b.id));
-        if(!candidates.length)break;
-        candidates.sort((a,b)=>sizes[b.id]-sizes[a.id]||b.height-a.height);
-        sizes[candidates[0].id]=Math.max(MIN,Math.round((sizes[candidates[0].id]-.5)*2)/2);
-        result=solve(page,sizes);
-      }
-      return result;
+      return solve(page,sizes);
     }
     function capture(layoutKey,model,pageNumber) {
       const source=[],markers=[], background=document.createElement('canvas');background.width=PAGE.widthPx;background.height=PAGE.heightPx;
@@ -32552,7 +32556,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       drawAdmissionMarker=(ctx,layout,dayIndex)=>markers.push({layout,dayIndex});
       drawTextBox=(ctx,text,field,options={})=>{
         if(!field || field.visible===false || !String(text||'').trim())return;
-        const key=field.blockKey||'microbiology';
+        const key=options.blockKey||field.blockKey||'unclassified';
         source.push({id:`${pageNumber}:${key}:${field.blockIndex||0}:${source.filter(b=>b.key===key).length}`,key,text:String(text),base:{...field},options:{...options,noWrap:false},defaultSize:Math.max(MIN,Math.round(field.fontSize/PX_PER_PT*2)/2)});
       };
       try{baseRender(background,layoutKey,model,pageNumber,{showLabHighlights:true,showAdminPlaceholders:false});}
@@ -32614,9 +32618,9 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     function errors(){return ensure().flatMap(page=>page.result.issues.map(id=>`${labels[page.source.find(b=>b.id===id).key]||'Podaci'} (${page.number}. str.)`));}
     function announce(message='') {
       const problems=errors();
-      const adapted=[...new Set(documents.flatMap(p=>p.result.blocks.filter(b=>b.size<(blockEdits[b.id]?.size||preferences[b.key]||b.defaultSize)).map(b=>`${labels[b.key]||b.key}: ${b.size.toLocaleString('hr-HR')} pt`)))];
+      const moved=[...new Set(documents.flatMap(p=>p.result.blocks.filter(b=>b.field.x!==b.base.x || b.field.y!==b.base.y).map(b=>labels[b.key]||'Podaci')))];
       notice.dataset.error=String(!!problems.length);
-      notice.textContent=problems.length?'Ispis je zaustavljen: cijeli sadržaj ne stane bez preklapanja. Smanjite font označenog bloka ili provjerite unos. '+[...new Set(problems)].join(', '):message || (adapted.length?'Za ovu listu prilagođeno: '+adapted.join('; ')+'. Spremljene željene veličine ostaju sačuvane.':'Kliknite tekstualni blok za uređivanje teksta i fonta.');
+      notice.textContent=problems.length?'Ispis je zaustavljen: za označene blokove nema dovoljno slobodnog prostora bez preklapanja. Font je sačuvan. Provjerite označeni sadržaj. '+[...new Set(problems)].join(', '):message || (moved.length?'Blokovi su pomaknuti radi izbjegavanja preklapanja: '+moved.join(', ')+'. Veličine fonta su sačuvane.':'Kliknite tekstualni blok za uređivanje teksta i fonta.');
     }
     function paint(canvas,page,suppress=false) {
       canvas.dataset.measuredPage=String(page.number);
@@ -32687,12 +32691,12 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       if(!Number.isFinite(requested)||requested<MIN||requested>MAX){feedback.textContent='Unesite veličinu od 8 do 40 pt.';input.focus();return;}
       const source=page.source.find(item=>item.id===b.id);
       source.text=editor.value.replace(/\r\n?/g,'\n');
-      const fixed={...page.result.sizes};let result,applied=Math.round(requested*2)/2;
-      for(;applied>=MIN;applied-=.5){result=solve(page,{...fixed,[b.id]:applied});if(doesNotWorsen(result,page.result)||applied===MIN)break;}
+      const fixed={...page.result.sizes},applied=Math.round(requested*2)/2;
+      const result=solve(page,{...fixed,[b.id]:applied});
       blockEdits[b.id]={source:source.originalText,text:source.text,size:applied};
       page.result=result;
       cacheKey=JSON.stringify([getFormData(),state.calibration,state.previewListCount,state.previewTherapyCarryByPair,Object.values(state.images).map(img=>[img?.complete,img?.naturalWidth])]);
-      noticeText=applied<requested?`Tekst je spremljen. Primijenjeno ${applied.toLocaleString('hr-HR')} pt zbog raspoloživog prostora.`:'Izmjene bloka su primijenjene.';
+      noticeText='Izmjene su primijenjene. Odabrani font je sačuvan; raspored blokova je ponovno izračunat.';
       markPatientSyncDirty();paint(els.canvas1,documents[0]);paint(els.canvas2,documents[1]);hide();
     };
     cancel.onclick=hide;menu.addEventListener('cancel',event=>{event.preventDefault();hide();});
@@ -32720,7 +32724,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
         wizardGo(7);announce();
         screenPreviewIndex=documents.findIndex(page=>page.result.issues.length);
         const page=documents[screenPreviewIndex],block=page.result.blocks.find(b=>page.result.issues.includes(b.id));
-        show(block);feedback.textContent='Ispis nije pokrenut: ovaj tekst ne stane na stranicu ni uz dopuštenu veličinu. Provjerite označeni unos.';
+        show(block);feedback.textContent='Ispis nije pokrenut: ovaj tekst ne stane u slobodan prostor uz odabranu veličinu fonta. Provjerite označeni unos.';
         setStatus('Ispis nije pokrenut. Označen je tekst koji izlazi izvan stranice ili se preklapa.',true);
         return;
       }
