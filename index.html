@@ -10083,6 +10083,8 @@ Primjer 3..."></textarea>
     // Predložak koji je priložen odgovara A4 landscape omjeru.
     widthMm: 297,
     heightMm: 210,
+    // Jednolik pomak teksta i cijelog obrasca u oba načina ispisa.
+    printOffsetYmm: -5,
     fileNames: {
       patientData: 'temperaturna_lista_podatci.json',
       calibration: 'temperaturna_lista_kalibracija.json',
@@ -32622,11 +32624,13 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       notice.dataset.error=String(!!problems.length);
       notice.textContent=problems.length?'Ispis je zaustavljen: za označene blokove nema dovoljno slobodnog prostora bez preklapanja. Font je sačuvan. Provjerite označeni sadržaj. '+[...new Set(problems)].join(', '):message || (moved.length?'Blokovi su pomaknuti radi izbjegavanja preklapanja: '+moved.join(', ')+'. Veličine fonta su sačuvane.':'Kliknite tekstualni blok za uređivanje teksta i fonta.');
     }
-    function paint(canvas,page,suppress=false,showLabHighlights=false) {
+    function paint(canvas,page,suppress=false,showLabHighlights=false,forPrint=false) {
       canvas.dataset.measuredPage=String(page.number);
       const ctx=canvas.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
       ctx.save();ctx.scale(canvas.width/PAGE.widthPx,canvas.height/PAGE.heightPx);
       ctx.fillStyle='#fff';ctx.fillRect(0,0,PAGE.widthPx,PAGE.heightPx);
+      // Pomak primijeni jednom, prije pozadine i teksta, samo za konačni ispis.
+      if(forPrint)ctx.translate(0,PAGE.printOffsetYmm*PAGE.heightPx/PAGE.heightMm);
       if(!suppress){
         ctx.drawImage(page.background,0,0);
       }
@@ -32719,7 +32723,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     fontDialog.remove();inlineFontMenu.remove();document.querySelectorAll('.inline-font-button').forEach(button=>button.remove());
     syncInlineFonts=function(){};
     const exportPages=async(options={})=>{await document.fonts.ready;ensure();if(errors().length){announce();throw new Error('Cijeli sadržaj ne stane; ispis je zaustavljen.');}
-      return documents.map(page=>{const c=document.createElement('canvas');c.width=PAGE.printWidthPx;c.height=PAGE.printHeightPx;paint(c,page,options.suppressBackground===true);c.dataset.printPageNumber=String(page.number);c.dataset.printDocumentPageCount=String(documents.length);return c;});};
+      return documents.map(page=>{const c=document.createElement('canvas');c.width=PAGE.printWidthPx;c.height=PAGE.printHeightPx;paint(c,page,options.suppressBackground===true,false,true);c.dataset.printPageNumber=String(page.number);c.dataset.printDocumentPageCount=String(documents.length);return c;});};
     renderCanvasesForExport=exportPages;
     const oldPrint=printPages;
     printPages=async function(options={}){
@@ -32738,7 +32742,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     printCanvasPages=async function(canvases,title){await document.fonts.ready;if(errors().length){announce();throw new Error('Tekst ne stane na stranicu.');}return oldPrintCanvas(canvases,title);};
     addEventListener('beforeprint',()=>{printHost.replaceChildren();ensure();
       if(document.fonts.status!=='loaded'||errors().length){printHost.append(wizardElement('p',{},'ISPIS ZASTAVEN — cijeli sadržaj nije moguće sigurno ispisati. Vratite se u pregled aplikacije i ispravite označene blokove.'));announce();return;}
-      documents.forEach(page=>{const c=document.createElement('canvas');c.width=PAGE.printWidthPx;c.height=PAGE.printHeightPx;paint(c,page);const img=document.createElement('img');img.src=c.toDataURL('image/png');img.alt='';printHost.append(img);});
+      documents.forEach(page=>{const c=document.createElement('canvas');c.width=PAGE.printWidthPx;c.height=PAGE.printHeightPx;paint(c,page,false,false,true);const img=document.createElement('img');img.src=c.toDataURL('image/png');img.alt='';printHost.append(img);});
     });
     addEventListener('afterprint',()=>printHost.replaceChildren());
     document.fonts.ready.then(()=>{cacheKey='';renderAll();if(wizard.step===7)refreshScreenPreview();});
