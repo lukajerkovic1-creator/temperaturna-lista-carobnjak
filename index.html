@@ -9951,7 +9951,7 @@ Primjer 3..."></textarea>
   // ============================================================
   // VERZIJA APLIKACIJE — jedini izvor istine
   // ============================================================
-  const APP_VERSION = '0.10.23';
+  const APP_VERSION = '0.10.24';
   const APP_BUILD_SHA = 'c24d1cc23303';
   const PARSER_VERSION = 'temperaturna-lista-parser-v2';
   const PARSER_PROVENANCE_SCHEMA = 'temperaturna-lista-parser-provenance-v1';
@@ -10091,7 +10091,7 @@ Primjer 3..."></textarea>
     // Predložak koji je priložen odgovara A4 landscape omjeru.
     widthMm: 297,
     heightMm: 210,
-    printAlignmentVersion: 'scan-2026-10-09-v5',
+    printAlignmentVersion: 'scan-2026-10-12-v6',
     fileNames: {
       patientData: 'temperaturna_lista_podatci.json',
       calibration: 'temperaturna_lista_kalibracija.json',
@@ -32456,28 +32456,34 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     if(['labBox1Days','labBox2Days','labBox3Days','labBox4Days','radiologyDays'].includes(key)){
       mapped.y=Math.max(mapped.y,SCANNED_FORM.newY[5]+5);
     }
+    if(key==='vitalSignsDays'){
+      // Start in the blood-pressure row, then continue into the next two rows.
+      mapped.y=SCANNED_FORM.clinicalBottom+4;
+      mapped.height=SCANNED_FORM.bottom-mapped.y;
+    }
     return mapped;
   }
 
-  // Registration from the first-page preprinted scan supplied on 2026-10-09.
-  // Apply only to text-only printing; the printer's offset/shrinkage is external
-  // to the document layout. Keep glyph size and wrapping unchanged.
+  // Registration measured against both paper scans received on 2026-10-12.
+  // Fit horizontal anchors to the actual grid, not to the misplaced ink.
+  // Apply only to text-only printing; keep glyph size and wrapping unchanged.
   const PREPRINTED_FIRST_PAGE_ALIGNMENT = Object.freeze({
-    xScale:1.06, yScale:1.055, xOffset:-98.5, yOffset:-12
+    xScale:0.9797878876, yScale:1.025, xOffset:35.7465525961, yOffset:12
   });
-  // Second-page date centres fitted to their seven printed day fields.
   const PREPRINTED_SECOND_PAGE_ALIGNMENT = Object.freeze({
-    xScale:1.0520554587, yScale:1.055, xOffset:-86.78840614, yOffset:-31
+    xScale:0.9843633558, yScale:1.025, xOffset:22.9462625217, yOffset:28
   });
-  function alignPreprintedPrintField(field, pageNumber = 1) {
+  function alignPreprintedPrintField(field, pageNumber = 1, inkWidth = field.width) {
     const a=pageNumber===2?PREPRINTED_SECOND_PAGE_ALIGNMENT:PREPRINTED_FIRST_PAGE_ALIGNMENT;
     const anchor=field.textAlign==='center'?field.width/2:field.textAlign==='right'?field.width:0;
-    // A printer may clip ink near the physical paper edge. Keep left-hand
-    // text at least 5 mm inside the sheet after registration, not before it.
-    const safeLeft=5*PAGE.widthPx/297;
+    const margin=5*PAGE.widthPx/PAGE.widthMm;
     const alignedX=(field.x+anchor)*a.xScale+a.xOffset-anchor;
-    return {...field,x:Math.max(safeLeft,alignedX),
-      y:field.y*a.yScale+a.yOffset};
+    const inkOffset=field.textAlign==='center'?anchor-inkWidth/2:field.textAlign==='right'?anchor-inkWidth:0;
+    const minX=margin-inkOffset;
+    const maxX=PAGE.widthPx-margin-inkOffset-inkWidth;
+    const alignedY=field.y*a.yScale+a.yOffset-(pageNumber===1 && field.blockKey==='patientHeader'?4:0);
+    return {...field,x:Math.max(minX,Math.min(maxX,alignedX)),
+      y:Math.max(margin,Math.min(PAGE.heightPx-margin-field.height,alignedY))};
   }
 
   // v0.10: one measured document for preview, raster export and native printing.
@@ -32784,13 +32790,16 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       if(!suppress){
         ctx.drawImage(page.background,0,0);
       }
-      for(const marker of page.markers||[])drawAdmissionMarker(ctx,marker.layout,marker.dayIndex);
+      const register=forPrint && suppress && page.scannedForm && [1,2].includes(page.number);
+      for(const marker of page.markers||[]){
+        const layout=register?{...marker.layout,dates:marker.layout.dates.map(field=>alignPreprintedPrintField(field,page.number))}:marker.layout;
+        drawAdmissionMarker(ctx,layout,marker.dayIndex);
+      }
       for(const b of page.result.blocks){
         const options={...b.options,noWrap:true};
         if(!showLabHighlights){delete options.highlightPredicate;delete options.highlightFill;}
         const field={...b.field,height:b.height};
-        const aligned=forPrint && suppress && page.scannedForm && [1,2].includes(page.number)
-          ? alignPreprintedPrintField(field,page.number) : field;
+        const aligned=register?alignPreprintedPrintField(field,page.number,b.inkWidth):field;
         nativeDraw(ctx,b.lines.join('\n'),aligned,options);
       }
       ctx.restore();
