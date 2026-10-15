@@ -9951,7 +9951,7 @@ Primjer 3..."></textarea>
   // ============================================================
   // VERZIJA APLIKACIJE — jedini izvor istine
   // ============================================================
-  const APP_VERSION = '0.10.25';
+  const APP_VERSION = '0.10.26';
   const APP_BUILD_SHA = 'c24d1cc23303';
   const PARSER_VERSION = 'temperaturna-lista-parser-v2';
   const PARSER_PROVENANCE_SCHEMA = 'temperaturna-lista-parser-provenance-v1';
@@ -32434,7 +32434,12 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       height:mapScannedAxis(field.y+field.height,SCANNED_FORM.oldY,SCANNED_FORM.newY)-y};
   }
   function scannedCaptureField(field,key,layout) {
-    let mapped=mapScannedField(field);
+    // The legacy renderer has already added a therapy offset using its narrow
+    // day-cell width. Discard that estimated Y for findings: solve() measures
+    // the expanded therapy and places these blocks below its actual bottom.
+    const findingKeys=['labBox1Days','labBox2Days','labBox3Days','labBox4Days','radiologyDays'];
+    const anchor=findingKeys.includes(key)?layout[key]?.[field.blockIndex]:null;
+    let mapped=mapScannedField(anchor?{...field,y:anchor.y}:field);
     if(!['patientHeader','diagnosis'].includes(key)){
       mapped.width=Math.min(mapped.width,Math.max(8,SCANNED_FORM.right-5-mapped.x));
     }
