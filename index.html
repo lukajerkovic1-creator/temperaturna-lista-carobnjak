@@ -24966,12 +24966,15 @@ ${ohbpTherapyPreviewText}`, resolvedOhbpTherapyField, { noWrap: false });
       const field = resolveVitalSignsField(ctx, layout, model, dynamicLabYOffset);
       drawTextBox(ctx, model.vitalSigns, field, { noWrap: false, blockKey:'vitalSignsDays' });
     }
+    // A dated control belongs in its day column, including continuation weeks.
+    // Use one visible block: continuation-page laboratory fields may be hidden.
     if (renderOptions.showFollowUpControl) {
-      drawFollowUpControlLabBoxes(ctx, layout, model, pageNumber, renderOptions);
-    }
-    if (renderOptions.showFollowUpControl && model.followUpControl) {
       const field = resolveFollowUpControlField(layout, model, pageNumber);
-      if (field) drawTextBox(ctx, model.followUpControl, field, { noWrap: model.isOutpatient === true });
+      const text = buildOutpatientFollowUpControlText(model.followUpControlRaw) || 'KONTROLA';
+      if (field) drawTextBox(ctx, text, {
+        ...field, blockKey: 'followUpControlDays',
+        blockIndex: getFollowUpControlDayIndex(model, pageNumber)
+      }, { noWrap: false, blockKey: 'followUpControlDays' });
     }
 
     const dates = getRenderPageDates(model, pageNumber);
@@ -31876,6 +31879,15 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     if (data.showFollowUpControlOnList && (data.followUpControl || data.followUpControlDate)) sections.push(['Kontrola',`${data.followUpControlDate ? formatIsoDateToCroatian(data.followUpControlDate)+'\n' : ''}${data.followUpControl}`]);
     return sections;
   }
+  function isFollowUpControlOnChart(data) {
+    const model = deriveDocumentModel(data);
+    if (!model.followUpControlDate) return false;
+    for (let page = 1; page <= model.previewListCount; page++) {
+      const dates = buildPreviewPageModel(page, data, model.admission, model.page1LayoutKey).dates;
+      if (findDateIndexInList(dates, model.followUpControlDate) >= 0) return true;
+    }
+    return false;
+  }
   function wizardContinuationSections(data = getFormData()) {
     const sections = [];
     const model = deriveDocumentModel(data);
@@ -31888,7 +31900,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
     if (data.microbiologyEnabled) (data.microbiologyResults || []).forEach((row,index) => {
       if (row.date || row.sample || row.result) sections.push([`Mikrobiološki nalaz ${index+1}`,`Datum: ${row.date || 'nije unesen'}\nUzorak: ${row.sample || 'nije unesen'}\nRezultat: ${row.result || 'nije unesen'}`]);
     });
-    if (data.showFollowUpControlOnList && (data.followUpControl || data.followUpControlDate)) {
+    if (data.showFollowUpControlOnList && (data.followUpControl || data.followUpControlDate) && !isFollowUpControlOnChart(data)) {
       sections.push(['Kontrola', [data.followUpControlDate ? 'Datum kontrole: '+formatIsoDateToCroatian(data.followUpControlDate) : 'Datum kontrole nije unesen', data.followUpControl].filter(Boolean).join('\n')]);
     }
     return sections;
@@ -32387,7 +32399,7 @@ Unesite datum prijema ili odustanite od ispisa. Želite li ipak nastaviti ispis?
       content.replaceChildren();const data=getFormData();
       content.append(wizardElement('h3',{},'Pacijent'),wizardElement('p',{},[data.fullName,data.birthYear,'Prijem: '+(data.admissionDate?formatIsoDateToCroatian(data.admissionDate):'nije valjan')].join(' · ')));
       wizardSections(data).forEach(([title,text])=>content.append(wizardElement('h3',{},title),wizardElement('pre',{},text)));
-      if(data.showFollowUpControlOnList && (data.followUpControl || data.followUpControlDate))content.append(wizardElement('p',{class:'wizard-review-note'},'Kontrola je uključena u nastavne stranice nakon temperaturne liste.'));
+      if(data.showFollowUpControlOnList && (data.followUpControl || data.followUpControlDate))content.append(wizardElement('p',{class:'wizard-review-note'},isFollowUpControlOnChart(data) ? 'Kontrola je prikazana u stupcu datuma kontrole na temperaturnoj listi.' : 'Datum kontrole je izvan prikazanog razdoblja; kontrola je na nastavnoj stranici.'));
       syncSave();
     }
     let zoom=0;
